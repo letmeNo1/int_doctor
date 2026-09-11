@@ -25,6 +25,89 @@ new-chat/
 
 双击 `start-app.bat`，等待右上角状态从「后端加载中…」变为「后端就绪」（首次约 30-60 秒），点「开始录音」。
 
+## 项目初始化说明
+
+适用于新机器、删除环境后重建，或需要完整重新部署时。
+
+### 1. 环境要求
+
+- Windows 10/11
+- Python 3.10.x
+- Node.js 22.x
+- 可联网下载 FunASR 模型
+
+### 2. 初始化 Python 环境
+
+在项目根目录执行：
+
+```powershell
+cd C:\Users\Administrator\int_doctor
+py -3.10 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+pip install funasr fastapi "uvicorn[standard]" modelscope==1.36.3 torch torchaudio numpy scipy soundfile
+```
+
+如果你继续使用仓库内现成环境，也可以直接使用 `funasr_env`，无需重复创建。
+
+### 3. 下载语音模型
+
+激活 Python 环境后执行：
+
+```powershell
+python download_models.py
+```
+
+模型默认会下载到当前用户目录下的 ModelScope 缓存中。首次下载时间取决于网络情况。
+
+### 4. 初始化 Electron 依赖
+
+进入 Electron 目录安装依赖：
+
+```powershell
+cd .\electron-app
+npm install
+```
+
+如果只是恢复依赖，保留 `package-lock.json` 并执行 `npm install` 即可。
+
+### 5. 启动与验证
+
+回到项目根目录后，任选一种方式启动：
+
+```powershell
+cd C:\Users\Administrator\int_doctor
+start-app.bat
+```
+
+或手动分别启动后端与桌面端：
+
+```powershell
+cd C:\Users\Administrator\int_doctor
+.\.venv\Scripts\Activate.ps1
+python asr_service.py
+```
+
+另开一个终端：
+
+```powershell
+cd C:\Users\Administrator\int_doctor\electron-app
+npm start
+```
+
+验证标准：
+
+- Electron 窗口正常打开
+- 页面状态显示「后端就绪」
+- 导入 `test_dialog.wav` 后能看到转写结果和说话人标签
+
+### 6. 常见初始化问题
+
+- 如果 PowerShell 禁止执行脚本，可先执行：`Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned`
+- 如果模型下载失败，优先检查网络或重试 `python download_models.py`
+- 如果 `npm install` 失败，先确认 Node.js 版本是否为 22.x 左右
+- 如果后端启动失败，优先确认当前激活的是 `.venv` 或 `funasr_env` 中的正确 Python 环境
+
 ## 命令行使用（不打开界面）
 
 ```powershell
