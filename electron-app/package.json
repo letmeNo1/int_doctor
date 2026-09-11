@@ -1,0 +1,17 @@
+{
+  "name": "consultation-recorder",
+  "version": "1.0.0",
+  "description": "问诊记录：语音转写 + 说话人分离（FunASR）",
+  "main": "main.js",
+  "author": "doubao",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron ."
+  },
+  "devDependencies": {
+    "electron": "^44.3.0"
+  },
+  "dependencies": {
+    "@zxing/browser": "^0.2.1"
+  }
+}

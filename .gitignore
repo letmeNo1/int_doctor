@@ -1,0 +1,28 @@
+# Python environments
+.venv/
+funasr_env/
+
+# Node/Electron dependencies
+electron-app/node_modules/
+
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Build artifacts
+dist/
+build/
+out/
+release/
+
+# Logs
+*.log
+*.err.log
+
+# Local test audio artifacts
+silence_test.wav
+test_dialog.wav
+
+# OS/editor files
+.DS_Store
+Thumbs.db

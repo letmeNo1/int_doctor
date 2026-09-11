@@ -1,0 +1,140 @@
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+  background: #f3f5f8; color: #1f2937; height: 100vh; display: flex; flex-direction: column;
+}
+
+/* 顶栏 */
+.topbar { display: flex; justify-content: space-between; align-items: center;
+  padding: 10px 16px; background: #fff; border-bottom: 1px solid #e5e7eb; }
+.brand { display: flex; align-items: center; gap: 10px; }
+.brand .logo { font-size: 22px; }
+.brand h1 { font-size: 17px; font-weight: 600; }
+.badge { font-size: 12px; padding: 3px 10px; border-radius: 999px; }
+.badge-wait { background: #fef3c7; color: #92400e; }
+.badge-ok   { background: #d1fae5; color: #065f46; }
+.badge-err  { background: #fee2e2; color: #991b1b; }
+.badge-rec  { background: #fee2e2; color: #991b1b; animation: pulse 1.2s infinite; }
+@keyframes pulse { 50% { opacity: .55; } }
+.actions { display: flex; gap: 8px; align-items: center; }
+
+.btn { border: 1px solid transparent; border-radius: 8px; padding: 7px 14px;
+  font-size: 13px; cursor: pointer; transition: all .15s; }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+.btn-primary { background: #2563eb; color: #fff; }
+.btn-primary:hover:not(:disabled) { background: #1d4ed8; }
+.btn-danger { background: #dc2626; color: #fff; }
+.btn-danger:hover:not(:disabled) { background: #b91c1c; }
+.btn-ghost { background: #fff; color: #374151; border-color: #d1d5db; }
+.btn-ghost:hover:not(:disabled) { background: #f3f4f6; }
+.btn-small { padding: 4px 10px; font-size: 12px; background: #2563eb; color: #fff; border-radius: 6px; }
+.btn-small:hover { background: #1d4ed8; }
+
+/* 主体布局 */
+.layout { flex: 1; display: grid; grid-template-columns: 1fr 320px; gap: 12px;
+  padding: 12px; min-height: 0; }
+.panel { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px;
+  display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+.panel-head { display: flex; justify-content: space-between; align-items: center;
+  padding: 10px 14px; border-bottom: 1px solid #eef1f4; }
+.panel-head h2 { font-size: 14px; font-weight: 600; }
+.stats { display: flex; gap: 12px; font-size: 12px; color: #6b7280; }
+.stats b { color: #1f2937; font-weight: 600; }
+
+/* 对话流 */
+.transcript-body { flex: 1; overflow-y: auto; padding: 12px; }
+.empty-hint { color: #9ca3af; font-size: 13px; text-align: center; margin-top: 60px; line-height: 1.9; }
+.msg { display: flex; gap: 8px; margin-bottom: 8px; align-items: flex-start; }
+.msg .t { color: #9ca3af; font-size: 11px; margin-top: 4px; white-space: nowrap; min-width: 54px; }
+.msg .tag { font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 999px;
+  color: #fff; white-space: nowrap; margin-top: 1px; }
+.msg .text { font-size: 14px; line-height: 1.55; background: #f8fafc; border-radius: 8px;
+  padding: 6px 10px; flex: 1; }
+.msg .text .dur { color: #9ca3af; font-size: 11px; margin-left: 8px; }
+.msg.pending .text { color: #6b7280; font-style: italic; }
+
+/* 侧栏 */
+.sidebar { padding-bottom: 10px; }
+.spk-config { display: flex; flex-direction: column; gap: 8px; padding: 10px 14px; }
+.spk-config label { font-size: 13px; display: flex; align-items: center; gap: 8px; }
+.spk-config input, .fields input, .fields textarea {
+  flex: 1; border: 1px solid #d1d5db; border-radius: 6px; padding: 5px 8px; font-size: 13px;
+  font-family: inherit; width: 100%;
+}
+.spk-config input:focus, .fields input:focus, .fields textarea:focus { outline: 2px solid #bfdbfe; border-color: #60a5fa; }
+.fields { display: flex; flex-direction: column; gap: 8px; padding: 10px 14px; }
+.fields label { font-size: 12px; color: #6b7280; display: flex; flex-direction: column; gap: 4px; }
+.fields textarea { resize: vertical; }
+.tip { font-size: 11px; color: #9ca3af; padding: 8px 14px; line-height: 1.6; }
+
+/* 滚动条 */
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 4px; }
+
+/* 当前病人栏 */
+.patient-bar { display: flex; align-items: center; gap: 8px; margin-left: 24px; }
+.patient-label { font-size: 12px; color: #6b7280; }
+.patient-name { font-size: 13px; font-weight: 600; background: #eff6ff; color: #1d4ed8;
+  border: 1px solid #bfdbfe; border-radius: 999px; padding: 3px 12px; }
+.patient-name.empty { background: #f3f4f6; color: #9ca3af; border-color: #e5e7eb; }
+
+/* 弹窗 */
+.modal-mask { position: fixed; inset: 0; background: rgba(17, 24, 39, .45);
+  display: flex; align-items: center; justify-content: center; z-index: 100; }
+.modal-mask[hidden] { display: none !important; }
+.modal { background: #fff; border-radius: 14px; width: 640px; max-width: 94vw;
+  max-height: 86vh; display: flex; flex-direction: column; box-shadow: 0 20px 50px rgba(0,0,0,.2); }
+.modal-head { display: flex; justify-content: space-between; align-items: center;
+  padding: 14px 18px; border-bottom: 1px solid #eef1f4; }
+.modal-head h2 { font-size: 15px; }
+.modal-close { background: none; border: none; font-size: 18px; cursor: pointer; color: #6b7280; }
+.modal-close:hover { color: #1f2937; }
+.tabs { display: flex; gap: 4px; padding: 10px 18px 0; }
+.tab { padding: 7px 16px; border-radius: 8px 8px 0 0; font-size: 13px; cursor: pointer;
+  border: 1px solid transparent; color: #6b7280; background: none; }
+.tab.active { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe;
+  border-bottom-color: #eff6ff; font-weight: 600; }
+.modal-body { padding: 14px 18px 18px; overflow-y: auto; flex: 1; }
+.search { width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 8px;
+  font-size: 13px; margin-bottom: 10px; }
+.search:focus { outline: 2px solid #bfdbfe; border-color: #60a5fa; }
+.patient-item { display: flex; justify-content: space-between; align-items: center;
+  padding: 9px 12px; border: 1px solid #eef1f4; border-radius: 10px; margin-bottom: 8px; }
+.patient-item:hover { border-color: #bfdbfe; background: #f8fafc; }
+.patient-item .info { font-size: 13px; }
+.patient-item .info b { font-size: 14px; margin-right: 6px; }
+.patient-item .sub { color: #6b7280; font-size: 12px; margin-top: 3px; }
+.patient-item .ops { display: flex; gap: 6px; }
+.patient-empty { color: #9ca3af; font-size: 13px; text-align: center; padding: 30px 0; }
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.form-grid label { display: flex; flex-direction: column; gap: 5px; font-size: 12px; color: #6b7280; }
+.form-grid .full { grid-column: 1 / -1; }
+.form-grid input, .form-grid select, .form-grid textarea {
+  border: 1px solid #d1d5db; border-radius: 8px; padding: 7px 10px; font-size: 13px;
+  font-family: inherit; color: #1f2937; width: 100%; }
+.form-grid textarea { resize: vertical; }
+.form-grid input:focus, .form-grid select:focus, .form-grid textarea:focus {
+  outline: 2px solid #bfdbfe; border-color: #60a5fa; }
+.form-ops { display: flex; justify-content: flex-end; }
+.btn-danger-ghost { background: #fff; color: #dc2626; border-color: #fecaca; }
+.btn-danger-ghost:hover { background: #fef2f2; }
+
+/* 病历号直达 + 扫码 */
+.verify-row { display: flex; gap: 8px; align-items: center; margin-bottom: 10px; }
+.verify-no { flex: 1; display: flex; align-items: center; gap: 8px; }
+.verify-no .search { margin-bottom: 0; }
+.verify-label { font-size: 12px; color: #6b7280; white-space: nowrap; }
+.patient-item .appt { display: inline-block; font-size: 11px; color: #1d4ed8;
+  background: #eff6ff; border-radius: 999px; padding: 1px 8px; margin-left: 6px; }
+.appt-today { color: #b45309; background: #fef3c7; }
+.scan-modal { width: 520px; }
+#scan-video { width: 100%; border-radius: 10px; background: #111827; aspect-ratio: 4 / 3; object-fit: cover; }
+.scan-tip { font-size: 12px; color: #6b7280; margin-top: 10px; line-height: 1.7; text-align: center; }
+.scan-status { font-size: 13px; margin-top: 8px; text-align: center; min-height: 18px; }
+.scan-status.ok { color: #065f46; font-weight: 600; }
+.scan-status.err { color: #991b1b; }
+.btn:disabled { opacity: .55; cursor: not-allowed; background: #f3f4f6; color: #9ca3af; border-color: #e5e7eb; }
+.btn:disabled:hover { background: #f3f4f6; }
+.btn-danger { background: #dc2626; color: #fff; border-color: #dc2626; }
+.btn-danger:hover { background: #b91c1c; }
+.scan-ops { display: flex; justify-content: center; margin-top: 10px; }

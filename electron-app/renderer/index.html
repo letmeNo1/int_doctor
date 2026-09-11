@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline';
+                 connect-src http://127.0.0.1:8765; media-src 'self' blob:;">
+  <title>问诊记录</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo">🏥</span>
+      <h1>问诊记录</h1>
+      <span id="conn-status" class="badge badge-wait">后端加载中…</span>
+    </div>
+    <div class="patient-bar">
+      <span class="patient-label">当前病人</span>
+      <span id="current-patient" class="patient-name">未选择</span>
+      <button id="btn-patient" class="btn btn-ghost btn-small">选择 / 新增病人</button>
+    </div>
+    <div class="actions">
+      <button id="btn-start" class="btn btn-primary" disabled>开始录音</button>
+      <button id="btn-stop" class="btn btn-danger" disabled>停止</button>
+      <label class="btn btn-ghost" for="file-import">导入音频</label>
+      <input type="file" id="file-import" accept="audio/*" hidden>
+      <button id="btn-export-md" class="btn btn-ghost" disabled>导出 Markdown</button>
+      <button id="btn-export-json" class="btn btn-ghost" disabled>导出 JSON</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="panel transcript">
+      <div class="panel-head">
+        <h2>实时对话</h2>
+        <div class="stats">
+          <span>时长 <b id="stat-dur">0:00</b></span>
+          <span>句数 <b id="stat-count">0</b></span>
+          <span id="spk-stats"></span>
+        </div>
+      </div>
+      <div id="transcript" class="transcript-body">
+        <div class="empty-hint">点击「开始录音」，应用将自动切分对话并区分说话人。<br>
+        也可「导入音频」直接转写已有录音。</div>
+      </div>
+    </section>
+
+    <aside class="panel sidebar">
+      <div class="panel-head"><h2>说话人设置</h2></div>
+      <div class="spk-config">
+        <label>说话人 0 <input id="spk0-name" type="text" value="医生" placeholder="如：医生"></label>
+        <label>说话人 1 <input id="spk1-name" type="text" value="患者" placeholder="如：患者"></label>
+        <button id="btn-save-spk" class="btn btn-small">保存称呼</button>
+      </div>
+
+      <div class="panel-head"><h2>问诊记录</h2></div>
+      <div class="fields">
+        <label>主诉<input id="f-complaint" type="text" placeholder="患者主要不适"></label>
+        <label>现病史<textarea id="f-history" rows="3" placeholder="本次发病经过"></textarea></label>
+        <label>既往史<textarea id="f-past" rows="2" placeholder="既往疾病/手术/过敏"></textarea></label>
+        <label>诊断/处置<textarea id="f-dx" rows="3" placeholder="诊断、检查、用药建议"></textarea></label>
+      </div>
+      <div class="tip">说话人编号≠真实身份：请先在左侧把 0/1 改成「医生/患者」，或用 CAM++ 声纹注册实现自动实名（二开）。</div>
+    </aside>
+  </main>
+
+  <!-- 病人管理弹窗 -->
+  <div id="patient-modal" class="modal-mask" hidden>
+    <div class="modal">
+      <div class="modal-head">
+        <h2>病人管理</h2>
+        <button id="modal-close" class="modal-close">✕</button>
+      </div>
+      <div class="tabs">
+        <button id="tab-exist" class="tab active">选择已有病人</button>
+        <button id="tab-new" class="tab">新增病人</button>
+      </div>
+      <div class="modal-body">
+        <!-- 已有病人 -->
+        <div id="panel-exist">
+          <div class="verify-row">
+            <div class="verify-no">
+              <span class="verify-label">病历号直达</span>
+              <input id="patient-no-input" class="search" type="text" placeholder="输入病历号回车即选…">
+            </div>
+            <button id="btn-scan" class="btn btn-ghost">📷 扫码</button>
+          </div>
+          <input id="patient-search" class="search" type="text" placeholder="搜索姓名 / 病历号 / 电话…">
+          <div id="patient-list"></div>
+        </div>
+        <!-- 新增病人 -->
+        <div id="panel-new" class="form-grid" hidden>
+          <label>姓名 *<input id="p-name" type="text" placeholder="必填"></label>
+          <label>性别
+            <select id="p-gender">
+              <option value="男">男</option>
+              <option value="女">女</option>
+              <option value="其他">其他</option>
+            </select>
+          </label>
+          <label>年龄<input id="p-age" type="text" placeholder="如 45"></label>
+          <label>病历号<input id="p-no" type="text" placeholder="二维码内容建议用病历号"></label>
+          <label>预约时间<input id="p-appt" type="text" placeholder="如 2026-09-12 09:30"></label>
+          <label class="full">联系电话<input id="p-phone" type="text" placeholder="选填"></label>
+          <label class="full">既往史 / 过敏史<textarea id="p-past" rows="3" placeholder="选填，导出记录时自动带上"></textarea></label>
+          <div class="full form-ops">
+            <button id="btn-add-patient" class="btn btn-primary">保存并选择</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 扫码弹窗 -->
+  <div id="scan-modal" class="modal-mask" hidden>
+    <div class="modal scan-modal">
+      <div class="modal-head">
+        <h2>扫描病人二维码</h2>
+        <button id="scan-close" class="modal-close">✕</button>
+      </div>
+      <div class="modal-body">
+        <video id="scan-video" autoplay playsinline muted></video>
+        <div class="scan-ops">
+          <button id="scan-stop" class="btn btn-danger">关闭摄像头</button>
+        </div>
+        <div class="scan-tip">将病人二维码对准摄像头（二维码内容为病历号）。<br>也可直接输入病历号。</div>
+        <div class="scan-status" id="scan-status"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="vendor/zxing-browser.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
