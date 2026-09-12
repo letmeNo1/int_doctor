@@ -366,21 +366,25 @@ def qrcode_png(no: str, authorization: Optional[str] = Header(None)):
 # ---------------- 页面 ----------------
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
+def page(name: str):
+    # no-store：避免浏览器缓存旧版页面导致登录逻辑不一致
+    return FileResponse(STATIC_DIR / name, headers={"Cache-Control": "no-store"})
+
 @app.get("/")
 def index():
-    return FileResponse(STATIC_DIR / "login.html")
+    return page("login.html")
 
 @app.get("/admin")
 def page_admin():
-    return FileResponse(STATIC_DIR / "admin.html")
+    return page("admin.html")
 
 @app.get("/doctor")
 def page_doctor():
-    return FileResponse(STATIC_DIR / "doctor.html")
+    return page("doctor.html")
 
 @app.get("/patient")
 def page_patient():
-    return FileResponse(STATIC_DIR / "patient.html")
+    return page("patient.html")
 
 # 初始化：内置管理员 + SQLite 建表 + 迁移旧记录
 def ensure_admin():

@@ -49,10 +49,13 @@ const els = {
   loginLayer: $('login-layer'), loginUser: $('login-user'), loginPass: $('login-pass'),
   loginMsg: $('login-msg'), btnLogin: $('btn-login'),
   docBar: $('doc-bar'), docName: $('doc-name'), btnLogout: $('btn-logout'),
+  // 保存到后台
+  btnSaveRecord: $('btn-save-record'),
 };
 
 // ---- 医生登录（对接医院管理后台 8888）----
 let doctorInfo = null;
+let loginToken = null;
 
 function showLoginMsg(text, isErr) {
   els.loginMsg.textContent = text || '';
@@ -77,9 +80,11 @@ async function doctorLogin() {
       showLoginMsg('该账号不是医生账号', true); return;
     }
     doctorInfo = j.user;
+    loginToken = j.token;
     els.loginLayer.hidden = true;
     els.docBar.hidden = false;
     els.btnLogout.hidden = false;
+    els.btnSaveRecord.disabled = false;
     els.docName.textContent = (doctorInfo.name || username) +
       (doctorInfo.department ? ' · ' + doctorInfo.department : '');
     els.loginUser.value = ''; els.loginPass.value = '';
@@ -93,10 +98,58 @@ async function doctorLogin() {
 
 function doctorLogout() {
   doctorInfo = null;
+  loginToken = null;
   els.loginLayer.hidden = false;
   els.docBar.hidden = true;
   els.btnLogout.hidden = true;
+  els.btnSaveRecord.disabled = true;
   els.loginUser.focus();
+}
+
+// ---- 手动保存问诊记录到后台病例库（SQLite）----
+function formatConversation() {
+  const lines = [];
+  for (const s of sentences) {
+    if (s.spk < 0) {
+      lines.push(`[${fmtWall(s.wall)}] ${s.text}`);
+    } else {
+      lines.push(`[${fmtWall(s.wall)}] ${spkName(s.spk)}：${s.text}`);
+    }
+  }
+  return lines.join('\n');
+}
+
+async function saveToBackend() {
+  if (!loginToken) { alert('请先使用医生账号登录'); return; }
+  if (!currentPatient) { alert('请先选择病人'); return; }
+  const f = structuredFields();
+  const convo = formatConversation().trim();
+  const hasContent = convo || f.complaint || f.history || f.dx;
+  if (!hasContent) { alert('当前没有可保存的内容（对话或问诊字段为空）'); return; }
+  els.btnSaveRecord.disabled = true;
+  try {
+    const r = await fetch('http://127.0.0.1:8888/api/doctor/records', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + loginToken },
+      body: JSON.stringify({
+        patientNo: currentPatient.no,
+        complaint: f.complaint,
+        history: f.history,
+        dx: f.dx,
+        content: convo || `（未录音，仅问诊字段）\n主诉：${f.complaint}\n现病史：${f.history}\n诊断处置：${f.dx}`,
+      }),
+    });
+    const j = await r.json();
+    if (!r.ok) {
+      if (r.status === 401) { alert('登录已失效，请重新登录'); doctorLogout(); return; }
+      throw new Error(j.detail || '保存失败');
+    }
+    alert('✅ 已保存到后台病例库（' + currentPatient.name + '，' + j.record.createdAt + '）');
+  } catch (e) {
+    alert('保存失败：' + e.message + '\n请确认医院管理后台已启动（start-doctor.bat）');
+  } finally {
+    els.btnSaveRecord.disabled = false;
+  }
 }
 
 // ---- 病人管理 ----
@@ -817,6 +870,8 @@ els.btnLogin.addEventListener('click', doctorLogin);
 els.loginPass.addEventListener('keydown', (e) => { if (e.key === 'Enter') doctorLogin(); });
 els.loginUser.addEventListener('keydown', (e) => { if (e.key === 'Enter') els.loginPass.focus(); });
 els.btnLogout.addEventListener('click', () => { if (confirm('确定切换账号？')) doctorLogout(); });
+// 保存到后台
+els.btnSaveRecord.addEventListener('click', saveToBackend);
 // 新增表单回车快速提交
 ['p-name', 'p-phone'].forEach((id) => {
   $(id).addEventListener('keydown', (e) => { if (e.key === 'Enter') addPatientSubmit(); });
