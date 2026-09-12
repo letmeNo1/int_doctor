@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta http-equiv="Content-Security-Policy"
         content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline';
-                 connect-src http://127.0.0.1:8765; media-src 'self' blob:;">
+                 connect-src http://127.0.0.1:8765 http://127.0.0.1:8888; media-src 'self' blob:;">
   <title>问诊记录</title>
   <link rel="stylesheet" href="style.css">
 </head>
@@ -19,6 +19,8 @@
       <span class="patient-label">当前病人</span>
       <span id="current-patient" class="patient-name">未选择</span>
       <button id="btn-patient" class="btn btn-ghost btn-small">选择 / 新增病人</button>
+      <span class="doc-bar" id="doc-bar" hidden>👤 <b id="doc-name"></b></span>
+      <button id="btn-logout" class="btn btn-ghost btn-small" hidden>切换账号</button>
     </div>
     <div class="actions">
       <button id="btn-start" class="btn btn-primary" disabled>开始录音</button>
@@ -127,6 +129,19 @@
         <div class="scan-tip">将病人二维码对准摄像头（二维码内容为病历号）。<br>也可直接输入病历号。</div>
         <div class="scan-status" id="scan-status"></div>
       </div>
+    </div>
+  </div>
+
+  <!-- 医生登录层 -->
+  <div id="login-layer" class="login-layer">
+    <div class="login-box">
+      <h2>🏥 问诊记录</h2>
+      <p class="login-sub">请使用医生账号登录</p>
+      <input id="login-user" type="text" placeholder="账号" autocomplete="off">
+      <input id="login-pass" type="password" placeholder="密码">
+      <div id="login-msg" class="login-msg"></div>
+      <button id="btn-login" class="btn btn-primary login-btn">登 录</button>
+      <p class="login-tip">账号由医院管理后台创建（管理员登录后台 → 医生管理 → 新增医生）</p>
     </div>
   </div>
 

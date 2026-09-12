@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>医院管理后台 - 管理员</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="topbar">
+  <h1>🏥 医院管理后台</h1>
+  <div class="user"><span id="user-name"></span><button class="btn-outline" id="btn-logout">退出登录</button></div>
+</div>
+<div class="wrap">
+  <div class="tabs">
+    <button class="tab active" data-tab="doctors">医生管理</button>
+    <button class="tab" data-tab="patients">病人记录</button>
+    <button class="tab" data-tab="records">病例记录</button>
+  </div>
+
+  <!-- 医生管理 -->
+  <div class="card" id="panel-doctors">
+    <h2>新增医生账号</h2>
+    <form id="form-doctor">
+      <div class="row">
+        <label>姓名<input id="d-name" required></label>
+        <label>科室<input id="d-dept" placeholder="如 内科"></label>
+        <label>职称<input id="d-title" placeholder="如 主任医师"></label>
+        <label>登录账号<input id="d-user" required></label>
+        <label>初始密码<input id="d-pass" required></label>
+      </div>
+      <button class="btn" type="submit">创建医生</button>
+    </form>
+    <h2 style="margin-top:22px">医生列表</h2>
+    <table>
+      <thead><tr><th>姓名</th><th>科室</th><th>职称</th><th>账号</th><th>创建时间</th><th></th></tr></thead>
+      <tbody id="doctor-list"></tbody>
+    </table>
+  </div>
+
+  <!-- 病人记录 -->
+  <div class="card hidden" id="panel-patients">
+    <h2>病人记录</h2>
+    <input class="search" id="patient-q" placeholder="搜索姓名 / 病历号 / 电话…">
+    <table>
+      <thead><tr><th>病历号</th><th>姓名</th><th>性别</th><th>年龄</th><th>电话</th><th>预约</th><th>建档时间</th><th></th></tr></thead>
+      <tbody id="patient-list"></tbody>
+    </table>
+  </div>
+
+  <!-- 病例记录 -->
+  <div class="card hidden" id="panel-records">
+    <h2>全部病例记录</h2>
+    <table>
+      <thead><tr><th>时间</th><th>病人</th><th>病历号</th><th>医生</th><th>主诉</th><th>诊断处置</th></tr></thead>
+      <tbody id="record-list"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- 编辑病人弹窗 -->
+<div class="modal-mask hidden" id="edit-mask">
+  <div class="modal">
+    <h3>编辑病人档案</h3>
+    <div class="field"><label>姓名</label><input id="e-name"></div>
+    <div class="field"><label>性别</label><select id="e-gender"><option>男</option><option>女</option><option>其他</option></select></div>
+    <div class="field"><label>年龄</label><input id="e-age"></div>
+    <div class="field"><label>电话</label><input id="e-phone"></div>
+    <div class="field"><label>预约时间</label><input id="e-appt" placeholder="如 2026-09-12 09:30"></div>
+    <div class="field"><label>既往史/过敏史</label><textarea id="e-past" rows="3"></textarea></div>
+    <div class="ops">
+      <button class="btn btn-ghost" id="btn-edit-cancel">取消</button>
+      <button class="btn" id="btn-edit-save">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 二维码弹窗 -->
+<div class="modal-mask hidden" id="qr-mask">
+  <div class="modal">
+    <h3>病人二维码</h3>
+    <div class="qr-wrap">
+      <img id="qr-img" alt="二维码">
+      <div class="no" id="qr-no"></div>
+      <button class="btn" id="btn-qr-download">下载二维码</button>
+    </div>
+    <div class="ops"><button class="btn btn-ghost" id="btn-qr-close">关闭</button></div>
+  </div>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const token = localStorage.getItem('token');
+if (!token || localStorage.getItem('role') !== 'admin') location.href = '/';
+const user = JSON.parse(localStorage.getItem('user') || '{}');
+$('user-name').textContent = '👤 ' + (user.name || '管理员');
+$('btn-logout').addEventListener('click', () => { localStorage.clear(); location.href = '/'; });
+
+const auth = { 'Authorization': 'Bearer ' + token };
+async function api(url, opt = {}) {
+  const r = await fetch(url, { ...opt, headers: { ...auth, ...(opt.headers || {}) } });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) { alert(j.detail || '请求失败'); throw new Error(j.detail); }
+  return j;
+}
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+// Tab 切换
+document.querySelectorAll('.tab').forEach((t) => t.addEventListener('click', () => {
+  document.querySelectorAll('.tab').forEach((x) => x.classList.remove('active'));
+  t.classList.add('active');
+  ['doctors','patients','records'].forEach((p) => $('panel-' + p).classList.toggle('hidden', p !== t.dataset.tab));
+}));
+
+// 医生管理
+async function loadDoctors() {
+  const j = await api('/api/admin/doctors');
+  $('doctor-list').innerHTML = j.doctors.length
+    ? j.doctors.map((d) => `<tr><td>${esc(d.name)}</td><td>${esc(d.department)}</td><td>${esc(d.title)}</td><td class="mono">${esc(d.username)}</td><td>${esc(d.createdAt ? d.createdAt.slice(0,16) : '')}</td>
+        <td><button class="btn btn-danger btn-small" data-del="${d.id}">删除</button></td></tr>`).join('')
+    : '<tr><td colspan="6" class="empty">暂无医生账号</td></tr>';
+  document.querySelectorAll('[data-del]').forEach((b) => b.addEventListener('click', async () => {
+    if (confirm('确定删除该医生账号？')) { await api('/api/admin/doctors/' + b.dataset.del, { method: 'DELETE' }); loadDoctors(); }
+  }));
+}
+$('form-doctor').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  await api('/api/admin/doctors', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: $('d-name').value.trim(), department: $('d-dept').value.trim(),
+      title: $('d-title').value.trim(), username: $('d-user').value.trim(), password: $('d-pass').value }) });
+  ['d-name','d-dept','d-title','d-user','d-pass'].forEach((i) => $(i).value = '');
+  loadDoctors();
+});
+
+// 病人记录
+let patients = [];
+let editingId = null;
+async function loadPatients() {
+  const j = await api('/api/admin/patients?q=' + encodeURIComponent($('patient-q').value.trim()));
+  patients = j.patients;
+  $('patient-list').innerHTML = patients.length
+    ? patients.map((p) => `<tr><td class="mono">${esc(p.no)}</td><td><b>${esc(p.name)}</b></td><td>${esc(p.gender)}</td><td>${esc(p.age)}</td><td>${esc(p.phone)}</td><td>${esc(p.appt)}</td><td>${esc(p.createdAt ? p.createdAt.slice(0,10) : '')}</td>
+        <td>
+          <button class="btn btn-ghost btn-small" data-qr="${p.no}">二维码</button>
+          <button class="btn btn-ghost btn-small" data-edit="${p.id}">编辑</button>
+          <button class="btn btn-danger btn-small" data-del="${p.id}">删除</button>
+        </td></tr>`).join('')
+    : '<tr><td colspan="8" class="empty">暂无病人</td></tr>';
+  document.querySelectorAll('[data-qr]').forEach((b) => b.addEventListener('click', () => showQr(b.dataset.qr)));
+  document.querySelectorAll('[data-edit]').forEach((b) => b.addEventListener('click', () => openEdit(b.dataset.edit)));
+  document.querySelectorAll('[data-del]').forEach((b) => b.addEventListener('click', async () => {
+    if (confirm('确定删除该病人档案？')) { await api('/api/admin/patients/' + b.dataset.del, { method: 'DELETE' }); loadPatients(); }
+  }));
+}
+$('patient-q').addEventListener('input', () => setTimeout(loadPatients, 300));
+
+function openEdit(id) {
+  const p = patients.find((x) => x.id === id); if (!p) return;
+  editingId = id;
+  $('e-name').value = p.name || ''; $('e-gender').value = p.gender || '男'; $('e-age').value = p.age || '';
+  $('e-phone').value = p.phone || ''; $('e-appt').value = p.appt || ''; $('e-past').value = p.past || '';
+  $('edit-mask').classList.remove('hidden');
+}
+$('btn-edit-cancel').addEventListener('click', () => $('edit-mask').classList.add('hidden'));
+$('btn-edit-save').addEventListener('click', async () => {
+  await api('/api/admin/patients/' + editingId, { method: 'PUT', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: $('e-name').value.trim(), gender: $('e-gender').value, age: $('e-age').value.trim(),
+      phone: $('e-phone').value.trim(), appt: $('e-appt').value.trim(), past: $('e-past').value.trim() }) });
+  $('edit-mask').classList.add('hidden');
+  loadPatients();
+});
+
+// 二维码
+let qrBlobUrl = '';
+async function showQr(no) {
+  $('qr-no').textContent = '病历号：' + no;
+  $('qr-mask').classList.remove('hidden');
+  try {
+    const r = await fetch('/api/qrcode/' + no, { headers: auth });
+    if (!r.ok) throw new Error((await r.json()).detail);
+    const blob = await r.blob();
+    qrBlobUrl = URL.createObjectURL(blob);
+    $('qr-img').src = qrBlobUrl;
+  } catch (e) { alert('二维码获取失败：' + e.message); $('qr-mask').classList.add('hidden'); }
+}
+$('btn-qr-close').addEventListener('click', () => { $('qr-mask').classList.add('hidden'); if (qrBlobUrl) URL.revokeObjectURL(qrBlobUrl); });
+$('btn-qr-download').addEventListener('click', () => {
+  const a = document.createElement('a');
+  a.href = qrBlobUrl; a.download = '病人二维码.png'; a.click();
+});
+
+// 病例记录
+async function loadRecords() {
+  const j = await api('/api/admin/records');
+  $('record-list').innerHTML = j.records.length
+    ? j.records.map((r) => `<tr><td>${esc(r.createdAt)}</td><td>${esc(r.patientName)}</td><td class="mono">${esc(r.patientNo)}</td><td>${esc(r.doctorName)}</td><td>${esc(r.complaint)}</td><td>${esc(r.dx)}</td></tr>`).join('')
+    : '<tr><td colspan="6" class="empty">暂无病例记录</td></tr>';
+}
+
+loadDoctors(); loadPatients(); loadRecords();
+</script>
+</body>
+</html>

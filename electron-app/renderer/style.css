@@ -138,3 +138,21 @@ body {
 .btn-danger { background: #dc2626; color: #fff; border-color: #dc2626; }
 .btn-danger:hover { background: #b91c1c; }
 .scan-ops { display: flex; justify-content: center; margin-top: 10px; }
+
+/* 医生登录层 */
+.login-layer { position: fixed; inset: 0; background: linear-gradient(135deg, #0f766e, #134e4a);
+  display: flex; align-items: center; justify-content: center; z-index: 200; }
+.login-box { background: #fff; border-radius: 16px; padding: 30px 34px; width: 360px;
+  box-shadow: 0 20px 50px rgba(0,0,0,.3); text-align: center; }
+.login-box h2 { font-size: 20px; margin-bottom: 4px; }
+.login-box .login-sub { color: #6b7280; font-size: 13px; margin-bottom: 20px; }
+.login-box input { width: 100%; padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 9px;
+  font-size: 14px; margin-bottom: 12px; }
+.login-box input:focus { outline: 2px solid #99f6e4; border-color: #14b8a6; }
+.login-msg { min-height: 18px; font-size: 13px; margin-bottom: 8px; }
+.login-msg.err { color: #dc2626; }
+.login-msg.ok { color: #047857; }
+.login-btn { width: 100%; padding: 10px; font-size: 14px; }
+.login-tip { color: #9ca3af; font-size: 12px; margin-top: 14px; line-height: 1.6; }
+.doc-bar { font-size: 13px; color: #065f46; background: #ecfdf5; border: 1px solid #a7f3d0;
+  border-radius: 999px; padding: 3px 12px; margin-left: 8px; }

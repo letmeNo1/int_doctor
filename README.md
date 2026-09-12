@@ -1,29 +1,50 @@
-# FunASR 语音转写 + 说话人分离（Windows 本地部署）+ 问诊记录桌面应用
+# 医院问诊系统（FunASR 问诊记录桌面应用 + 医院管理后台）
 
-部署日期：2026-09-11
-环境：Python 3.10 虚拟环境 + CPU 推理 + Electron 桌面应用
+环境：Windows 本地 + Python 3.10 虚拟环境 + CPU 推理 + Electron 桌面应用 + FastAPI Web 后台
 
-## 目录结构
+## 系统组成
 
 ```
-new-chat/
-├── funasr_env/              # Python 3.10 虚拟环境（已装好全部依赖）
+int_doctor/
+├── funasr_env/              # FunASR 转写虚拟环境（语音识别+说话人分离）
+├── .venv/                   # 医院后台虚拟环境（FastAPI + qrcode）
 ├── transcribe.py            # 命令行转写脚本：转写 + 说话人分离（JSON/TXT/SRT）
 ├── asr_service.py           # FastAPI 后端服务（Electron 自动拉起，端口 8765）
-├── download_models.py       # 模型下载脚本（重装/换机时用）
-├── make_test_audio.py       # 生成双人对话测试音频
-├── test_dialog.wav          # 25s 双人对话测试音频（已通过验证）
-├── electron-app/            # Electron 问诊记录应用
-│   ├── main.js              # 主进程：拉起 Python 后端 + 窗口 + 麦克风权限
-│   ├── preload.js
-│   ├── renderer/            # 界面：录音/实时对话/说话人设置/记录导出
-│   └── package.json
-└── start-app.bat            # 一键启动（双击即可）
+├── electron-app/            # Electron 问诊记录桌面应用
+│   └── renderer/            # 录音/实时对话/说话人设置/记录导出/病人管理/扫码
+├── app.py                   # 医院管理后台（FastAPI，端口 8888）
+├── static/                  # 后台前端：login / admin / doctor / patient
+├── hospital.db              # ★ 病例记录（SQLite，替代原 records.json）
+├── patients.json            # ★ 病人档案（桌面应用与后台共用同一份数据）
+├── users.json               # 管理员与医生账号
+├── start-app.bat            # 一键启动问诊记录桌面应用
+└── start-doctor.bat         # 一键启动医院管理后台
 ```
 
-## 快速启动（推荐）
+## 医院管理后台（本部分）
 
-双击 `start-app.bat`，等待右上角状态从「后端加载中…」变为「后端就绪」（首次约 30-60 秒），点「开始录音」。
+启动：双击 `start-doctor.bat`，浏览器自动打开 `http://127.0.0.1:8888`
+
+| 角色 | 功能 |
+|---|---|
+| **管理员**（默认 admin/admin123，登录后请改密） | 医生账号增删、全部病人记录（编辑/删除/查看二维码）、全部病例记录 |
+| **医生** | 登录后搜索查看病人列表、查看病人详情与历史病例、录入新病例 |
+| **病人** | 注册（自动生成病历号 P+日期+序号）、登录后查看/修改本人信息、生成并下载专属二维码 |
+
+**二维码内容 = 病历号**——病人就诊时出示二维码，医生用问诊记录桌面应用「📷 扫码」即可调出档案（两边共用 patients.json，数据天然一致）。
+
+后台 API：`app.py`（登录认证 / admin / doctor / patient / qrcode），接口测试 `test_api.py`（18 项全部通过）。
+
+**数据存储**：病例记录存 `hospital.db`（SQLite）；病人档案存 `patients.json`（与桌面应用共享）；账号存 `users.json`。旧版 `records.json` 数据启动时自动迁移入 SQLite 并备份为 `records.json.bak`。
+
+## 问诊记录桌面应用（另见原说明）
+
+启动：双击 `start-app.bat`（Electron 自动拉起 FunASR 后端 8765）
+
+- 自动录音 + 静音切句 + 实时分说话人（医生/患者）
+- 病人档案管理 + 身份核实（列表/病历号直达/扫码）
+- 问诊字段 + 导出 Markdown/JSON
+
 
 ## 项目初始化说明
 

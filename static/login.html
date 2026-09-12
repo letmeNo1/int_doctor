@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>医院管理后台 - 登录</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="login-body">
+  <div class="login-card">
+    <h1>🏥 医院管理后台</h1>
+    <div class="sub">登录后进入对应工作台</div>
+    <div class="role-tabs">
+      <div class="role-tab active" data-role="doctor">医生</div>
+      <div class="role-tab" data-role="patient">病人</div>
+    </div>
+    <div class="field"><label>账号</label><input id="username" type="text" placeholder="请输入账号"></div>
+    <div class="field"><label>密码</label><input id="password" type="password" placeholder="请输入密码"></div>
+    <button class="btn" id="btn-login">登 录</button>
+    <div class="msg" id="msg"></div>
+    <div class="tip" id="tip">管理员请用 admin 账号在此登录</div>
+    <div class="tip hidden" id="reg-link" style="margin-top:6px">还没有账号？<a href="/patient">立即注册 →</a></div>
+  </div>
+<script>
+const $ = (id) => document.getElementById(id);
+let role = 'doctor';
+document.querySelectorAll('.role-tab').forEach((t) => {
+  t.addEventListener('click', () => {
+    document.querySelectorAll('.role-tab').forEach((x) => x.classList.remove('active'));
+    t.classList.add('active');
+    role = t.dataset.role;
+    $('tip').textContent = role === 'patient'
+      ? '病人登录后可查看/修改本人信息，并生成专属二维码'
+      : '管理员请用 admin 账号在此登录';
+    $('reg-link').classList.toggle('hidden', role !== 'patient');
+  });
+});
+$('btn-login').addEventListener('click', async () => {
+  const username = $('username').value.trim();
+  const password = $('password').value;
+  if (!username || !password) { $('msg').textContent = '请输入账号和密码'; $('msg').className = 'msg err'; return; }
+  try {
+    const r = await fetch('/api/auth/login', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ role, username, password }),
+    });
+    const j = await r.json();
+    if (!r.ok) { $('msg').textContent = j.detail || '登录失败'; $('msg').className = 'msg err'; return; }
+    localStorage.setItem('token', j.token);
+    localStorage.setItem('role', j.user.role);
+    localStorage.setItem('user', JSON.stringify(j.user));
+    location.href = j.user.role === 'admin' ? '/admin' : j.user.role === 'doctor' ? '/doctor' : '/patient';
+  } catch (e) {
+    $('msg').textContent = '网络错误：' + e.message; $('msg').className = 'msg err';
+  }
+});
+$('password').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('btn-login').click(); });
+</script>
+</body>
+</html>

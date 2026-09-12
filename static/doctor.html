@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>医生工作台</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="topbar">
+  <h1>🩺 医生工作台</h1>
+  <div class="user"><span id="user-name"></span><button class="btn-outline" id="btn-logout">退出登录</button></div>
+</div>
+<div class="wrap">
+  <!-- 病人列表视图 -->
+  <div id="view-list">
+    <div class="card">
+      <h2>病人列表</h2>
+      <input class="search" id="patient-q" placeholder="搜索姓名 / 病历号 / 电话…">
+      <table>
+        <thead><tr><th>病历号</th><th>姓名</th><th>性别</th><th>年龄</th><th>电话</th><th>预约</th><th>操作</th></tr></thead>
+        <tbody id="patient-list"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 病人详情视图 -->
+  <div id="view-detail" class="hidden">
+    <button class="btn btn-ghost" id="btn-back" style="margin-bottom:12px">← 返回列表</button>
+    <div class="card">
+      <h2 id="detail-title">病人详情</h2>
+      <div class="detail-grid" id="detail-info"></div>
+      <button class="btn btn-ghost btn-small" id="btn-qr">查看二维码</button>
+    </div>
+    <div class="card">
+      <h2>添加病例记录</h2>
+      <form id="form-record">
+        <div class="row">
+          <label>主诉<input id="r-complaint" placeholder="如 咳嗽3天"></label>
+          <label>诊断处置<input id="r-dx" placeholder="如 上呼吸道感染，口服药"></label>
+        </div>
+        <div class="row">
+          <label>现病史 / 补充内容<textarea id="r-content" rows="3"></textarea></label>
+        </div>
+        <button class="btn" type="submit">保存病例</button>
+      </form>
+    </div>
+    <div class="card">
+      <h2>历史病例</h2>
+      <div id="record-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- 二维码弹窗 -->
+<div class="modal-mask hidden" id="qr-mask">
+  <div class="modal">
+    <h3>病人二维码</h3>
+    <div class="qr-wrap">
+      <img id="qr-img" alt="二维码">
+      <div class="no" id="qr-no"></div>
+      <button class="btn" id="btn-qr-download">下载二维码</button>
+    </div>
+    <div class="ops"><button class="btn btn-ghost" id="btn-qr-close">关闭</button></div>
+  </div>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const token = localStorage.getItem('token');
+if (!token || localStorage.getItem('role') !== 'doctor') location.href = '/';
+const user = JSON.parse(localStorage.getItem('user') || '{}');
+$('user-name').textContent = '👤 ' + (user.name || '医生') + (user.department ? ' · ' + user.department : '');
+$('btn-logout').addEventListener('click', () => { localStorage.clear(); location.href = '/'; });
+
+const auth = { 'Authorization': 'Bearer ' + token };
+async function api(url, opt = {}) {
+  const r = await fetch(url, { ...opt, headers: { ...auth, ...(opt.headers || {}) } });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) { alert(j.detail || '请求失败'); throw new Error(j.detail); }
+  return j;
+}
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+let patients = [];
+async function loadPatients() {
+  const j = await api('/api/doctor/patients?q=' + encodeURIComponent($('patient-q').value.trim()));
+  patients = j.patients;
+  $('patient-list').innerHTML = patients.length
+    ? patients.map((p) => `<tr><td class="mono">${esc(p.no)}</td><td><b>${esc(p.name)}</b></td><td>${esc(p.gender)}</td><td>${esc(p.age)}</td><td>${esc(p.phone)}</td><td>${esc(p.appt)}</td>
+        <td><button class="btn btn-ghost btn-small" data-view="${p.id}">查看病例</button></td></tr>`).join('')
+    : '<tr><td colspan="7" class="empty">暂无病人</td></tr>';
+  document.querySelectorAll('[data-view]').forEach((b) => b.addEventListener('click', () => openDetail(b.dataset.view)));
+}
+$('patient-q').addEventListener('input', () => setTimeout(loadPatients, 300));
+
+let currentPatient = null;
+async function openDetail(id) {
+  const j = await api('/api/doctor/patients/' + id);
+  currentPatient = j.patient;
+  $('detail-title').textContent = '病人详情：' + currentPatient.name;
+  $('detail-info').innerHTML = [
+    ['病历号', currentPatient.no], ['姓名', currentPatient.name], ['性别', currentPatient.gender],
+    ['年龄', currentPatient.age], ['电话', currentPatient.phone], ['预约时间', currentPatient.appt || '未设置'],
+    ['既往史/过敏史', currentPatient.past || '无'],
+  ].map(([k, v]) => `<div class="item"><b>${k}</b><span>${esc(v)}</span></div>`).join('');
+  const recs = j.records;
+  $('record-list').innerHTML = recs.length
+    ? recs.map((r) => `<div class="record-item">
+        <div class="head"><span>${esc(r.createdAt)} · ${esc(r.doctorName)}</span></div>
+        <div class="doc">${esc(r.content || '')}${r.complaint ? '\n主诉：' + esc(r.complaint) : ''}${r.dx ? '\n诊断处置：' + esc(r.dx) : ''}</div>
+      </div>`).join('')
+    : '<div class="empty">暂无病例记录</div>';
+  $('view-list').classList.add('hidden');
+  $('view-detail').classList.remove('hidden');
+}
+$('btn-back').addEventListener('click', () => {
+  $('view-detail').classList.add('hidden');
+  $('view-list').classList.remove('hidden');
+});
+$('form-record').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  await api('/api/doctor/records', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ patientNo: currentPatient.no, complaint: $('r-complaint').value.trim(),
+      dx: $('r-dx').value.trim(), content: $('r-content').value.trim() }) });
+  ['r-complaint','r-dx','r-content'].forEach((i) => $(i).value = '');
+  openDetail(currentPatient.id);
+});
+
+// 二维码
+let qrBlobUrl = '';
+$('btn-qr').addEventListener('click', () => showQr(currentPatient.no));
+async function showQr(no) {
+  $('qr-no').textContent = '病历号：' + no;
+  $('qr-mask').classList.remove('hidden');
+  try {
+    const r = await fetch('/api/qrcode/' + no, { headers: auth });
+    if (!r.ok) throw new Error((await r.json()).detail);
+    qrBlobUrl = URL.createObjectURL(await r.blob());
+    $('qr-img').src = qrBlobUrl;
+  } catch (e) { alert('二维码获取失败：' + e.message); $('qr-mask').classList.add('hidden'); }
+}
+$('btn-qr-close').addEventListener('click', () => { $('qr-mask').classList.add('hidden'); if (qrBlobUrl) URL.revokeObjectURL(qrBlobUrl); });
+$('btn-qr-download').addEventListener('click', () => { const a = document.createElement('a'); a.href = qrBlobUrl; a.download = '病人二维码.png'; a.click(); });
+
+loadPatients();
+</script>
+</body>
+</html>

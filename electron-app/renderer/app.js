@@ -45,7 +45,59 @@ const els = {
   pName: $('p-name'), pGender: $('p-gender'), pAge: $('p-age'),
   pNo: $('p-no'), pAppt: $('p-appt'), pPhone: $('p-phone'), pPast: $('p-past'),
   btnAddPatient: $('btn-add-patient'),
+  // 医生登录
+  loginLayer: $('login-layer'), loginUser: $('login-user'), loginPass: $('login-pass'),
+  loginMsg: $('login-msg'), btnLogin: $('btn-login'),
+  docBar: $('doc-bar'), docName: $('doc-name'), btnLogout: $('btn-logout'),
 };
+
+// ---- 医生登录（对接医院管理后台 8888）----
+let doctorInfo = null;
+
+function showLoginMsg(text, isErr) {
+  els.loginMsg.textContent = text || '';
+  els.loginMsg.className = 'login-msg' + (isErr ? ' err' : '');
+}
+
+async function doctorLogin() {
+  const username = els.loginUser.value.trim();
+  const password = els.loginPass.value;
+  if (!username || !password) { showLoginMsg('请输入账号和密码', true); return; }
+  els.btnLogin.disabled = true;
+  showLoginMsg('正在登录…', false);
+  try {
+    const r = await fetch('http://127.0.0.1:8888/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ role: 'doctor', username, password }),
+    });
+    const j = await r.json();
+    if (!r.ok) { showLoginMsg(j.detail || '登录失败', true); return; }
+    if (j.user.role !== 'doctor' && j.user.role !== 'admin') {
+      showLoginMsg('该账号不是医生账号', true); return;
+    }
+    doctorInfo = j.user;
+    els.loginLayer.hidden = true;
+    els.docBar.hidden = false;
+    els.btnLogout.hidden = false;
+    els.docName.textContent = (doctorInfo.name || username) +
+      (doctorInfo.department ? ' · ' + doctorInfo.department : '');
+    els.loginUser.value = ''; els.loginPass.value = '';
+    showLoginMsg('', false);
+  } catch (e) {
+    showLoginMsg('无法连接后台服务，请先启动医院管理后台（start-doctor.bat）', true);
+  } finally {
+    els.btnLogin.disabled = false;
+  }
+}
+
+function doctorLogout() {
+  doctorInfo = null;
+  els.loginLayer.hidden = false;
+  els.docBar.hidden = true;
+  els.btnLogout.hidden = true;
+  els.loginUser.focus();
+}
 
 // ---- 病人管理 ----
 let currentPatient = null;
@@ -688,6 +740,9 @@ function exportMarkdown() {
   lines.push('# 问诊记录');
   lines.push('');
   lines.push(`- 日期：${date.toLocaleString('zh-CN')}`);
+  if (doctorInfo) {
+    lines.push(`- 接诊医生：${doctorInfo.name || ''}${doctorInfo.department ? '（' + doctorInfo.department + '）' : ''}`);
+  }
   if (currentPatient) {
     lines.push(`- 病人：${currentPatient.name}（${currentPatient.gender || '?'}/${currentPatient.age ? currentPatient.age + '岁' : '?'}${currentPatient.no ? '，病历号 ' + currentPatient.no : ''}）`);
     if (currentPatient.phone) lines.push(`- 联系电话：${currentPatient.phone}`);
@@ -722,6 +777,7 @@ function exportJson() {
   const date = new Date();
   const data = {
     meta: { createdAt: date.toISOString(), durationSec: Math.round(sessionSec),
+      doctor: doctorInfo ? { name: doctorInfo.name, department: doctorInfo.department, username: doctorInfo.username } : null,
       patient: currentPatient ? { ...currentPatient } : null,
       speakers: Object.fromEntries(Object.entries(spkNames).map(([k, v]) => [k, v])) },
     structured: structuredFields(),
@@ -755,6 +811,12 @@ els.tabExist.addEventListener('click', () => switchTab('exist'));
 els.tabNew.addEventListener('click', () => switchTab('new'));
 els.search.addEventListener('input', renderPatientList);
 els.btnAddPatient.addEventListener('click', addPatientSubmit);
+
+// 医生登录事件
+els.btnLogin.addEventListener('click', doctorLogin);
+els.loginPass.addEventListener('keydown', (e) => { if (e.key === 'Enter') doctorLogin(); });
+els.loginUser.addEventListener('keydown', (e) => { if (e.key === 'Enter') els.loginPass.focus(); });
+els.btnLogout.addEventListener('click', () => { if (confirm('确定切换账号？')) doctorLogout(); });
 // 新增表单回车快速提交
 ['p-name', 'p-phone'].forEach((id) => {
   $(id).addEventListener('keydown', (e) => { if (e.key === 'Enter') addPatientSubmit(); });

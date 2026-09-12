@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>病人中心</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="topbar">
+  <h1>🧑‍⚕️ 病人中心</h1>
+  <div class="user"><span id="user-name"></span><button class="btn-outline" id="btn-logout">退出登录</button></div>
+</div>
+
+<!-- 注册视图 -->
+<div class="wrap" id="view-reg">
+  <div class="card" style="max-width:640px;margin:40px auto">
+    <h2>病人注册</h2>
+    <form id="form-reg">
+      <div class="row">
+        <label>姓名 *<input id="r-name" required></label>
+        <label>性别<select id="r-gender"><option>男</option><option>女</option><option>其他</option></select></label>
+        <label>年龄<input id="r-age" placeholder="如 45"></label>
+      </div>
+      <div class="row">
+        <label>联系电话<input id="r-phone" placeholder="选填"></label>
+        <label>预约时间<input id="r-appt" placeholder="如 2026-09-12 09:30"></label>
+      </div>
+      <div class="row">
+        <label>既往史 / 过敏史<textarea id="r-past" rows="3" placeholder="选填"></textarea></label>
+      </div>
+      <div class="row">
+        <label>登录账号 *<input id="r-user" required placeholder="用于后续登录"></label>
+        <label>密码 *<input id="r-pass" type="password" required></label>
+      </div>
+      <button class="btn" type="submit">注册并生成二维码</button>
+    </form>
+    <div class="tip" style="text-align:center;margin-top:14px;font-size:13px;color:#6b7280">已有账号？<a href="/">去登录</a></div>
+  </div>
+</div>
+
+<!-- 已登录视图 -->
+<div class="wrap hidden" id="view-logged">
+  <div class="card">
+    <h2>我的档案</h2>
+    <div class="detail-grid" id="info"></div>
+    <button class="btn btn-ghost" id="btn-edit" style="margin-top:8px">修改信息</button>
+  </div>
+  <div class="card">
+    <h2>我的专属二维码</h2>
+    <div class="qr-wrap">
+      <img id="qr-img" alt="二维码">
+      <div class="no" id="qr-no"></div>
+      <div class="tip">就诊时出示给医生扫码即可调出档案（二维码内容为病历号）</div>
+      <button class="btn" id="btn-download" style="margin-top:14px">下载二维码</button>
+    </div>
+  </div>
+</div>
+
+<!-- 编辑弹窗 -->
+<div class="modal-mask hidden" id="edit-mask">
+  <div class="modal">
+    <h3>修改我的信息</h3>
+    <div class="field"><label>姓名</label><input id="e-name"></div>
+    <div class="field"><label>性别</label><select id="e-gender"><option>男</option><option>女</option><option>其他</option></select></div>
+    <div class="field"><label>年龄</label><input id="e-age"></div>
+    <div class="field"><label>联系电话</label><input id="e-phone"></div>
+    <div class="field"><label>预约时间</label><input id="e-appt"></div>
+    <div class="field"><label>既往史/过敏史</label><textarea id="e-past" rows="3"></textarea></div>
+    <div class="field"><label>新密码（留空不修改）</label><input id="e-pass" type="password"></div>
+    <div class="ops">
+      <button class="btn btn-ghost" id="btn-edit-cancel">取消</button>
+      <button class="btn" id="btn-edit-save">保存</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const token = localStorage.getItem('token');
+
+function logout() { localStorage.clear(); location.href = '/'; }
+$('btn-logout').addEventListener('click', logout);
+
+async function api(url, opt = {}) {
+  const headers = { ...(token ? { 'Authorization': 'Bearer ' + token } : {}), ...(opt.headers || {}) };
+  const r = await fetch(url, { ...opt, headers });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.detail || '请求失败');
+  return j;
+}
+
+// 注册
+$('form-reg').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  try {
+    const j = await api('/api/patient/register', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: $('r-name').value.trim(), gender: $('r-gender').value, age: $('r-age').value.trim(),
+        phone: $('r-phone').value.trim(), appt: $('r-appt').value.trim(), past: $('r-past').value.trim(),
+        username: $('r-user').value.trim(), password: $('r-pass').value }) });
+    // 注册后自动登录
+    const l = await api('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ role: 'patient', username: $('r-user').value.trim(), password: $('r-pass').value }) });
+    localStorage.setItem('token', l.token);
+    localStorage.setItem('role', 'patient');
+    localStorage.setItem('user', JSON.stringify(l.user));
+    location.reload();
+  } catch (err) { alert(err.message); }
+});
+
+// 已登录视图
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let me = null;
+
+async function init() {
+  if (!token || localStorage.getItem('role') !== 'patient') {
+    $('view-logged').classList.add('hidden');
+    return; // 注册视图可见
+  }
+  $('view-reg').classList.add('hidden');
+  $('view-logged').classList.remove('hidden');
+  try {
+    const j = await api('/api/patient/me');
+    me = j.patient;
+    $('user-name').textContent = '👤 ' + me.name;
+    $('info').innerHTML = [
+      ['病历号', me.no], ['姓名', me.name], ['性别', me.gender], ['年龄', me.age],
+      ['电话', me.phone], ['预约时间', me.appt || '未设置'], ['既往史/过敏史', me.past || '无'],
+    ].map(([k, v]) => `<div class="item"><b>${k}</b><span>${esc(v)}</span></div>`).join('');
+    $('qr-no').textContent = '病历号：' + me.no;
+    const r = await fetch('/api/qrcode/' + me.no, { headers: { 'Authorization': 'Bearer ' + token } });
+    if (r.ok) { const blob = await r.blob(); $('qr-img').src = URL.createObjectURL(blob); window._qr = blob; }
+  } catch (e) { alert('加载失败：' + e.message); logout(); }
+}
+
+$('btn-edit').addEventListener('click', () => {
+  $('e-name').value = me.name; $('e-gender').value = me.gender; $('e-age').value = me.age || '';
+  $('e-phone').value = me.phone || ''; $('e-appt').value = me.appt || ''; $('e-past').value = me.past || '';
+  $('e-pass').value = '';
+  $('edit-mask').classList.remove('hidden');
+});
+$('btn-edit-cancel').addEventListener('click', () => $('edit-mask').classList.add('hidden'));
+$('btn-edit-save').addEventListener('click', async () => {
+  try {
+    const body = { name: $('e-name').value.trim(), gender: $('e-gender').value, age: $('e-age').value.trim(),
+      phone: $('e-phone').value.trim(), past: $('e-past').value.trim() };
+    if ($('e-pass').value) body.password = $('e-pass').value;
+    await api('/api/patient/me', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    $('edit-mask').classList.add('hidden');
+    init();
+  } catch (e) { alert('保存失败：' + e.message); }
+});
+$('btn-download').addEventListener('click', () => {
+  if (!window._qr) return;
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(window._qr); a.download = '我的病人二维码.png'; a.click();
+});
+
+init();
+</script>
+</body>
+</html>
