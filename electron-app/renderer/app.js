@@ -2,6 +2,7 @@
 'use strict';
 
 const API = 'http://127.0.0.1:8765';
+const HOSPITAL_API = 'https://jabobo.com/int_doctor';
 const SPK_COLORS = ['#2563eb', '#16a34a', '#d97706', '#9333ea', '#dc2626', '#0891b2'];
 
 // 切句参数
@@ -57,6 +58,49 @@ const els = {
 let doctorInfo = null;
 let loginToken = null;
 
+async function hospitalRequest(path, options = {}) {
+  const headers = { ...(options.headers || {}) };
+  if (loginToken) headers.Authorization = 'Bearer ' + loginToken;
+  const r = await fetch(HOSPITAL_API + path, { ...options, headers });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) {
+    if (r.status === 401) doctorLogout();
+    throw new Error(j.detail || '请求失败');
+  }
+  return j;
+}
+
+const patientsApi = {
+  list: async () => {
+    if (!loginToken) throw new Error('请先使用医生账号登录');
+    const j = await hospitalRequest('/api/doctor/patients');
+    return j.patients || [];
+  },
+  add: async (data) => {
+    if (!loginToken) throw new Error('请先使用医生账号登录');
+    const j = await hospitalRequest('/api/doctor/patients', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    return j.patient;
+  },
+  update: async (id, data) => {
+    if (!loginToken) throw new Error('请先使用医生账号登录');
+    const j = await hospitalRequest('/api/doctor/patients/' + id, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    return j.patient;
+  },
+  remove: async (id) => {
+    if (!loginToken) throw new Error('请先使用医生账号登录');
+    await hospitalRequest('/api/doctor/patients/' + id, { method: 'DELETE' });
+    return true;
+  },
+};
+
 function showLoginMsg(text, isErr) {
   els.loginMsg.textContent = text || '';
   els.loginMsg.className = 'login-msg' + (isErr ? ' err' : '');
@@ -69,13 +113,11 @@ async function doctorLogin() {
   els.btnLogin.disabled = true;
   showLoginMsg('正在登录…', false);
   try {
-    const r = await fetch('http://127.0.0.1:8888/api/auth/login', {
+    const j = await hospitalRequest('/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ role: 'doctor', username, password }),
     });
-    const j = await r.json();
-    if (!r.ok) { showLoginMsg(j.detail || '登录失败', true); return; }
     if (j.user.role !== 'doctor' && j.user.role !== 'admin') {
       showLoginMsg('该账号不是医生账号', true); return;
     }
@@ -87,10 +129,11 @@ async function doctorLogin() {
     els.btnSaveRecord.disabled = false;
     els.docName.textContent = (doctorInfo.name || username) +
       (doctorInfo.department ? ' · ' + doctorInfo.department : '');
+    if (!els.modal.hidden) loadPatientList();
     els.loginUser.value = ''; els.loginPass.value = '';
     showLoginMsg('', false);
   } catch (e) {
-    showLoginMsg('无法连接后台服务，请先启动医院管理后台（start-doctor.bat）', true);
+    showLoginMsg('无法连接医院管理后台：' + e.message, true);
   } finally {
     els.btnLogin.disabled = false;
   }
@@ -99,6 +142,7 @@ async function doctorLogin() {
 function doctorLogout() {
   doctorInfo = null;
   loginToken = null;
+  patientList = [];
   els.loginLayer.hidden = false;
   els.docBar.hidden = true;
   els.btnLogout.hidden = true;
@@ -128,9 +172,9 @@ async function saveToBackend() {
   if (!hasContent) { alert('当前没有可保存的内容（对话或问诊字段为空）'); return; }
   els.btnSaveRecord.disabled = true;
   try {
-    const r = await fetch('http://127.0.0.1:8888/api/doctor/records', {
+    const j = await hospitalRequest('/api/doctor/records', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + loginToken },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         patientNo: currentPatient.no,
         complaint: f.complaint,
@@ -139,14 +183,9 @@ async function saveToBackend() {
         content: convo || `（未录音，仅问诊字段）\n主诉：${f.complaint}\n现病史：${f.history}\n诊断处置：${f.dx}`,
       }),
     });
-    const j = await r.json();
-    if (!r.ok) {
-      if (r.status === 401) { alert('登录已失效，请重新登录'); doctorLogout(); return; }
-      throw new Error(j.detail || '保存失败');
-    }
     alert('✅ 已保存到后台病例库（' + currentPatient.name + '，' + j.record.createdAt + '）');
   } catch (e) {
-    alert('保存失败：' + e.message + '\n请确认医院管理后台已启动（start-doctor.bat）');
+    alert('保存失败：' + e.message);
   } finally {
     els.btnSaveRecord.disabled = false;
   }
@@ -196,7 +235,7 @@ function switchTab(which) {
 
 async function loadPatientList() {
   try {
-    patientList = await window.patientsApi.list();
+    patientList = await patientsApi.list();
     renderPatientList();
   } catch (e) {
     els.list.innerHTML = `<div class="patient-empty">读取病人档案失败：${e.message}</div>`;
@@ -256,7 +295,7 @@ function renderPatientList() {
     del.textContent = '删除';
     del.addEventListener('click', async () => {
       if (confirm(`确定删除病人「${p.name}」的档案？`)) {
-        await window.patientsApi.remove(p.id);
+        await patientsApi.remove(p.id);
         if (currentPatient && currentPatient.id === p.id) { currentPatient = null; renderCurrentPatient(); }
         loadPatientList();
       }
@@ -308,10 +347,10 @@ async function addPatientSubmit() {
   try {
     let p;
     if (editingId) {
-      p = await window.patientsApi.update(editingId, data);
+      p = await patientsApi.update(editingId, data);
       editingId = null;
     } else {
-      p = await window.patientsApi.add(data);
+      p = await patientsApi.add(data);
     }
     currentPatient = p;
     renderCurrentPatient();
@@ -329,7 +368,7 @@ async function addPatientSubmit() {
 async function quickSelectByNo() {
   const no = els.patientNoInput.value.trim();
   if (!no) return;
-  const list = await window.patientsApi.list();
+  const list = await patientsApi.list();
   const hits = list.filter((p) => (p.no || '').trim().toLowerCase() === no.toLowerCase());
   if (hits.length === 1) {
     currentPatient = hits[0];
@@ -472,7 +511,7 @@ async function handleScanResult(text) {
   const no = text.trim();
   els.scanStatus.textContent = '识别到：' + no + '，正在匹配…';
   els.scanStatus.className = 'scan-status ok';
-  const list = await window.patientsApi.list();
+  const list = await patientsApi.list();
   const hit = list.find((p) => (p.no || '').trim().toLowerCase() === no.toLowerCase());
   if (hit) {
     currentPatient = hit;

@@ -99,5 +99,5 @@ check("admin 病例列表", s == 200 and len(r.get("records", [])) >= 1)
 s, r = jj("GET", "/api/doctor/patients")
 check("无 token 被拒", s == 401)
 
-print("\n=== 测试" + ("全部通过 ✅" if ok else "存在失败 ❌") + " ===")
+print("\n=== 测试" + ("全部通过 [OK]" if ok else "存在失败 [FAIL]") + " ===")
 raise SystemExit(0 if ok else 1)

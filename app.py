@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """医院管理后台 - FastAPI 后端
-- 数据存储：patients.json(与问诊应用共享) / users.json(管理员·医生) / records.json(病例记录)
+- 数据存储：hospital.db(SQLite 主存储) / records.json(旧版迁移入口)
 - 认证：pbkdf2 密码哈希 + 内存 token
 - 角色：admin(管理后台) / doctor(医生) / patient(病人)
 运行：.venv\\Scripts\\python.exe -m uvicorn app:app --host 127.0.0.1 --port 8888
@@ -30,7 +30,7 @@ STATIC_DIR = BASE / "static"
 app = FastAPI(title="医院管理后台", version="1.0.0")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
-# ---------------- 文件存储 ----------------
+# ---------------- 旧版 JSON 导入 ----------------
 def read_json(path: Path, default):
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
@@ -43,19 +43,7 @@ def write_json(path: Path, data):
     tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
     os.replace(tmp, path)
 
-def patients() -> list:
-    return read_json(PATIENTS_FILE, [])
-
-def save_patients(data):
-    write_json(PATIENTS_FILE, data)
-
-def users() -> list:
-    return read_json(USERS_FILE, [])
-
-def save_users(data):
-    write_json(USERS_FILE, data)
-
-# ---------------- 病例记录（SQLite）----------------
+# ---------------- SQLite 主存储 ----------------
 def get_conn():
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
@@ -63,6 +51,29 @@ def get_conn():
 
 def init_db():
     with get_conn() as conn:
+        conn.execute("""CREATE TABLE IF NOT EXISTS users (
+            id TEXT PRIMARY KEY,
+            role TEXT,
+            username TEXT UNIQUE,
+            name TEXT,
+            createdAt TEXT,
+            data TEXT NOT NULL
+        )""")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_users_role ON users(role)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)")
+
+        conn.execute("""CREATE TABLE IF NOT EXISTS patients (
+            id TEXT PRIMARY KEY,
+            no TEXT UNIQUE,
+            username TEXT UNIQUE,
+            name TEXT,
+            phone TEXT,
+            createdAt TEXT,
+            data TEXT NOT NULL
+        )""")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_patients_no ON patients(no)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_patients_username ON patients(username)")
+
         conn.execute("""CREATE TABLE IF NOT EXISTS records (
             id TEXT PRIMARY KEY,
             patientNo TEXT,
@@ -74,6 +85,68 @@ def init_db():
             content TEXT,
             createdAt TEXT
         )""")
+
+def table_count(table: str) -> int:
+    with get_conn() as conn:
+        row = conn.execute(f"SELECT COUNT(*) AS n FROM {table}").fetchone()
+    return int(row["n"])
+
+def load_docs(table: str) -> list:
+    with get_conn() as conn:
+        rows = conn.execute(f"SELECT data FROM {table} ORDER BY createdAt ASC, id ASC").fetchall()
+    out = []
+    for row in rows:
+        try:
+            item = json.loads(row["data"])
+        except Exception:
+            continue
+        if isinstance(item, dict):
+            out.append(item)
+    return out
+
+def replace_docs(table: str, docs: list):
+    cleaned = [dict(item) for item in docs if isinstance(item, dict) and item.get("id")]
+    with get_conn() as conn:
+        conn.execute(f"DELETE FROM {table}")
+        if table == "users":
+            conn.executemany(
+                "INSERT INTO users (id, role, username, name, createdAt, data) VALUES (?,?,?,?,?,?)",
+                [(
+                    str(item.get("id", "")),
+                    item.get("role", ""),
+                    item.get("username", ""),
+                    item.get("name", ""),
+                    item.get("createdAt", ""),
+                    json.dumps(item, ensure_ascii=False),
+                ) for item in cleaned],
+            )
+        elif table == "patients":
+            conn.executemany(
+                "INSERT INTO patients (id, no, username, name, phone, createdAt, data) VALUES (?,?,?,?,?,?,?)",
+                [(
+                    str(item.get("id", "")),
+                    item.get("no", ""),
+                    item.get("username", ""),
+                    item.get("name", ""),
+                    item.get("phone", ""),
+                    item.get("createdAt", ""),
+                    json.dumps(item, ensure_ascii=False),
+                ) for item in cleaned],
+            )
+        else:
+            raise ValueError(f"unsupported table: {table}")
+
+def patients() -> list:
+    return load_docs("patients")
+
+def save_patients(data):
+    replace_docs("patients", data)
+
+def users() -> list:
+    return load_docs("users")
+
+def save_users(data):
+    replace_docs("users", data)
 
 def list_records() -> list:
     with get_conn() as conn:
@@ -107,6 +180,14 @@ def migrate_records_json():
             )
     os.replace(RECORDS_FILE, RECORDS_FILE.with_suffix(".json.bak"))
 
+def migrate_doc_json(table: str, json_path: Path):
+    """首次启用 SQLite 时，把旧版 users.json / patients.json 导入数据库。"""
+    if table_count(table) > 0:
+        return
+    docs = read_json(json_path, [])
+    if docs:
+        replace_docs(table, docs)
+
 # ---------------- 密码与 token ----------------
 def hash_pwd(pwd: str, salt: Optional[str] = None):
     salt = salt or secrets.token_hex(8)
@@ -123,11 +204,12 @@ def new_token(role: str, uid: str) -> str:
     SESSIONS[t] = {"role": role, "id": uid}
     return t
 
-def current(role: str, authorization: Optional[str] = None):
+def current(role, authorization: Optional[str] = None):
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(401, "未登录")
     s = SESSIONS.get(authorization[7:])
-    if not s or s["role"] != role:
+    allowed = {role} if isinstance(role, str) else set(role)
+    if not s or s["role"] not in allowed:
         raise HTTPException(401, "登录已失效或权限不足")
     return s
 
@@ -146,6 +228,14 @@ def gen_patient_no() -> str:
 def patient_public(p):
     return {k: v for k, v in p.items() if k not in ("password_hash", "salt")}
 
+def normalize_patient_no(raw_no: Optional[str], exclude_id: Optional[str] = None, keep_existing: Optional[str] = None) -> str:
+    value = (raw_no or "").strip()
+    if not value:
+        return keep_existing or gen_patient_no()
+    if any(p.get("no") == value and str(p.get("id")) != str(exclude_id) for p in patients()):
+        raise HTTPException(400, "病历号已存在")
+    return value
+
 # ---------------- 数据模型 ----------------
 class LoginReq(BaseModel):
     role: str
@@ -160,12 +250,22 @@ class DoctorCreate(BaseModel):
     password: str
 
 class PatientUpdate(BaseModel):
+    no: Optional[str] = None
     name: Optional[str] = None
     gender: Optional[str] = None
     age: Optional[str] = None
     phone: Optional[str] = None
     past: Optional[str] = None
     appt: Optional[str] = None
+
+class DoctorPatientCreate(BaseModel):
+    name: str
+    gender: str = "男"
+    age: str = ""
+    phone: str = ""
+    past: str = ""
+    appt: str = ""
+    no: str = ""
 
 class PatientRegister(BaseModel):
     name: str
@@ -251,6 +351,8 @@ def update_patient(pid: str, req: PatientUpdate, authorization: Optional[str] = 
     data = patients()
     for p in data:
         if str(p["id"]) == pid:
+            if req.no is not None:
+                p["no"] = normalize_patient_no(req.no, exclude_id=pid, keep_existing=p.get("no", ""))
             for k in ("name", "gender", "age", "phone", "past", "appt"):
                 if getattr(req, k) is not None:
                     p[k] = getattr(req, k)
@@ -273,16 +375,63 @@ def admin_records(authorization: Optional[str] = Header(None)):
 # ---------------- 医生 ----------------
 @app.get("/api/doctor/patients")
 def doctor_patients(q: str = "", authorization: Optional[str] = Header(None)):
-    current("doctor", authorization)
+    current(("doctor", "admin"), authorization)
     q = q.strip().lower()
     ps = patients()
     if q:
         ps = [p for p in ps if q in (p.get("name", "") + p.get("no", "") + p.get("phone", "")).lower()]
     return {"ok": True, "patients": [patient_public(p) for p in sorted(ps, key=lambda x: x.get("createdAt", ""), reverse=True)]}
 
+@app.post("/api/doctor/patients")
+def doctor_create_patient(req: DoctorPatientCreate, authorization: Optional[str] = Header(None)):
+    current(("doctor", "admin"), authorization)
+    name = req.name.strip()
+    if not name:
+        raise HTTPException(400, "请填写姓名")
+    p = {
+        "id": secrets.token_hex(6),
+        "no": normalize_patient_no(req.no),
+        "name": name,
+        "gender": req.gender,
+        "age": req.age,
+        "phone": req.phone,
+        "past": req.past,
+        "appt": req.appt,
+        "createdAt": datetime.datetime.now().isoformat(),
+    }
+    data = patients()
+    data.append(p)
+    save_patients(data)
+    return {"ok": True, "patient": patient_public(p)}
+
+@app.put("/api/doctor/patients/{pid}")
+def doctor_update_patient(pid: str, req: PatientUpdate, authorization: Optional[str] = Header(None)):
+    current(("doctor", "admin"), authorization)
+    data = patients()
+    for p in data:
+        if str(p["id"]) == pid:
+            if req.no is not None:
+                p["no"] = normalize_patient_no(req.no, exclude_id=pid, keep_existing=p.get("no", ""))
+            for k in ("name", "gender", "age", "phone", "past", "appt"):
+                if getattr(req, k) is not None:
+                    p[k] = getattr(req, k)
+            save_patients(data)
+            return {"ok": True, "patient": patient_public(p)}
+    raise HTTPException(404, "病人不存在")
+
+@app.delete("/api/doctor/patients/{pid}")
+def doctor_delete_patient(pid: str, authorization: Optional[str] = Header(None)):
+    current(("doctor", "admin"), authorization)
+    data = patients()
+    kept = [p for p in data if str(p["id"]) != pid]
+    if len(kept) == len(data):
+        raise HTTPException(404, "病人不存在")
+    save_patients(kept)
+    return {"ok": True}
+
 @app.get("/api/doctor/patients/{pid}")
 def doctor_patient_detail(pid: str, authorization: Optional[str] = Header(None)):
-    current("doctor", authorization)
+    current(("doctor", "admin"), authorization)
     p = next((x for x in patients() if str(x["id"]) == pid), None)
     if not p:
         raise HTTPException(404, "病人不存在")
@@ -293,7 +442,7 @@ def doctor_patient_detail(pid: str, authorization: Optional[str] = Header(None))
 
 @app.post("/api/doctor/records")
 def add_record(req: RecordCreate, authorization: Optional[str] = Header(None)):
-    s = current("doctor", authorization)
+    s = current(("doctor", "admin"), authorization)
     doc = next((d for d in users() if str(d.get("id")) == s["id"]), {})
     p = next((x for x in patients() if x.get("no") == req.patientNo), None)
     if not p:
@@ -386,7 +535,7 @@ def page_doctor():
 def page_patient():
     return page("patient.html")
 
-# 初始化：内置管理员 + SQLite 建表 + 迁移旧记录
+# 初始化：SQLite 建表 + 迁移旧数据 + 确保管理员存在
 def ensure_admin():
     if not any(u.get("role") == "admin" for u in users()):
         salt, h = hash_pwd("admin123")
@@ -395,6 +544,8 @@ def ensure_admin():
                      "createdAt": datetime.datetime.now().isoformat()}])
 
 init_db()
+migrate_doc_json("users", USERS_FILE)
+migrate_doc_json("patients", PATIENTS_FILE)
 migrate_records_json()
 ensure_admin()
 

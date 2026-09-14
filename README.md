@@ -14,9 +14,7 @@ int_doctor/
 │   └── renderer/            # 录音/实时对话/说话人设置/记录导出/病人管理/扫码
 ├── app.py                   # 医院管理后台（FastAPI，端口 8888）
 ├── static/                  # 后台前端：login / admin / doctor / patient
-├── hospital.db              # ★ 病例记录（SQLite，替代原 records.json）
-├── patients.json            # ★ 病人档案（桌面应用与后台共用同一份数据）
-├── users.json               # 管理员与医生账号
+├── hospital.db              # ★ 后台主数据库（账号 / 病人 / 病例）
 ├── start-app.bat            # 一键启动问诊记录桌面应用
 └── start-doctor.bat         # 一键启动医院管理后台
 ```
@@ -31,11 +29,11 @@ int_doctor/
 | **医生** | 登录后搜索查看病人列表、查看病人详情与历史病例、录入新病例 |
 | **病人** | 注册（自动生成病历号 P+日期+序号）、登录后查看/修改本人信息、生成并下载专属二维码 |
 
-**二维码内容 = 病历号**——病人就诊时出示二维码，医生用问诊记录桌面应用「📷 扫码」即可调出档案（两边共用 patients.json，数据天然一致）。
+**二维码内容 = 病历号**——病人就诊时出示二维码，医生用问诊记录桌面应用「📷 扫码」即可调出档案。桌面端通过医院管理后台 HTTP API 读取病人档案，不再直接读取本地数据文件。
 
 后台 API：`app.py`（登录认证 / admin / doctor / patient / qrcode），接口测试 `test_api.py`（18 项全部通过）。
 
-**数据存储**：病例记录存 `hospital.db`（SQLite）；病人档案存 `patients.json`（与桌面应用共享）；账号存 `users.json`。旧版 `records.json` 数据启动时自动迁移入 SQLite 并备份为 `records.json.bak`。
+**数据存储**：账号、病人、病例统一存 `hospital.db`（SQLite 主存储）；旧版 `records.json` 数据启动时自动迁移入 SQLite 并备份为 `records.json.bak`。
 
 ## 问诊记录桌面应用（另见原说明）
 
@@ -145,7 +143,7 @@ python transcribe.py 你的音频.wav --out json --punc
 - **说话人设置**：可把 spk0/spk1 改成「医生/患者」（记住设置）
 - **问诊记录**：主诉/现病史/既往史/诊断处置字段 + 导出 Markdown/JSON
 - **导入音频**：直接转写已有录音（无需麦克风）
-- **病人档案管理**：新增 / 编辑 / 删除 / 搜索病人，档案存 patients.json
+- **病人档案管理**：新增 / 编辑 / 删除 / 搜索病人，后台主存储为 SQLite，并同步兼容镜像
 - **病人身份核实（三种入口）**：
   1. 从列表选择（按预约时间排序，当天预约高亮「预约 今天」标签）
   2. 输入病历号回车直达（唯一匹配自动选中；支持姓名/电话模糊匹配）

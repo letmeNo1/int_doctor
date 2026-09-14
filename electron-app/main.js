@@ -1,52 +1,13 @@
 // 问诊记录 Electron 主进程
-// 职责：拉起 Python 后端(ASR服务)、创建窗口、处理麦克风权限、病人档案持久化、退出时清理后端
-const { app, BrowserWindow, session, ipcMain } = require('electron');
+// 职责：拉起 Python 后端(ASR服务)、创建窗口、处理麦克风权限、退出时清理后端
+const { app, BrowserWindow, session } = require('electron');
 const { spawn } = require('child_process');
-const fs = require('fs');
 const path = require('path');
 
 const BACKEND_PORT = 8765;
 const PROJECT_ROOT = path.join(__dirname, '..');
 const PYTHON = path.join(PROJECT_ROOT, 'funasr_env', 'Scripts', 'python.exe');
 const BACKEND_SCRIPT = path.join(PROJECT_ROOT, 'asr_service.py');
-const PATIENTS_FILE = path.join(PROJECT_ROOT, 'patients.json');
-
-// ---- 病人档案存储（patients.json）----
-function loadPatients() {
-  try {
-    const list = JSON.parse(fs.readFileSync(PATIENTS_FILE, 'utf8'));
-    return Array.isArray(list) ? list : [];
-  } catch (e) { return []; }
-}
-function savePatients(list) {
-  fs.writeFileSync(PATIENTS_FILE, JSON.stringify(list, null, 2), 'utf8');
-}
-function registerIpc() {
-  ipcMain.handle('patients:list', () => loadPatients());
-  ipcMain.handle('patients:add', (_e, data) => {
-    const list = loadPatients();
-    const p = {
-      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
-      createdAt: new Date().toISOString(),
-      ...data,
-    };
-    list.push(p);
-    savePatients(list);
-    return p;
-  });
-  ipcMain.handle('patients:update', (_e, id, data) => {
-    const list = loadPatients();
-    const i = list.findIndex((p) => p.id === id);
-    if (i < 0) return null;
-    list[i] = { ...list[i], ...data };
-    savePatients(list);
-    return list[i];
-  });
-  ipcMain.handle('patients:remove', (_e, id) => {
-    savePatients(loadPatients().filter((p) => p.id !== id));
-    return true;
-  });
-}
 
 let backendProc = null;
 let mainWindow = null;
@@ -105,7 +66,6 @@ app.whenReady().then(() => {
   session.defaultSession.setPermissionRequestHandler((_wc, permission, callback) => {
     callback(false);
   });
-  registerIpc();
   startBackend();
   createWindow();
   app.on('activate', () => {
