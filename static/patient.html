@@ -53,6 +53,7 @@
       <img id="qr-img" alt="二维码">
       <div class="no" id="qr-no"></div>
       <div class="tip">就诊时出示给医生扫码即可调出档案（二维码内容为病历号）</div>
+      <div class="msg" id="qr-msg"></div>
       <button class="btn" id="btn-download" style="margin-top:14px">下载二维码</button>
     </div>
   </div>
@@ -102,6 +103,27 @@ async function api(url, opt = {}) {
   return j;
 }
 
+async function loadQrCode(patientNo) {
+  $('qr-msg').textContent = '正在生成二维码...';
+  $('qr-msg').className = 'msg';
+  $('qr-img').removeAttribute('src');
+  window._qr = null;
+
+  const r = await fetch(new URL('api/qrcode/' + patientNo, APP_ROOT), {
+    headers: { 'Authorization': 'Bearer ' + token }
+  });
+  if (!r.ok) {
+    const detail = await r.json().catch(async () => ({ detail: await r.text().catch(() => '') }));
+    throw new Error(detail.detail || '二维码生成失败');
+  }
+
+  const blob = await r.blob();
+  $('qr-img').src = URL.createObjectURL(blob);
+  $('qr-msg').textContent = '二维码已生成，可直接下载或出示给医生扫码。';
+  $('qr-msg').className = 'msg ok';
+  window._qr = blob;
+}
+
 // 注册
 $('form-reg').addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -140,9 +162,14 @@ async function init() {
       ['电话', me.phone], ['预约时间', me.appt || '未设置'], ['既往史/过敏史', me.past || '无'],
     ].map(([k, v]) => `<div class="item"><b>${k}</b><span>${esc(v)}</span></div>`).join('');
     $('qr-no').textContent = '病历号：' + me.no;
-    const r = await fetch(new URL('api/qrcode/' + me.no, APP_ROOT), { headers: { 'Authorization': 'Bearer ' + token } });
-    if (r.ok) { const blob = await r.blob(); $('qr-img').src = URL.createObjectURL(blob); window._qr = blob; }
-  } catch (e) { alert('加载失败：' + e.message); logout(); }
+  } catch (e) { alert('加载失败：' + e.message); logout(); return; }
+
+  try {
+    await loadQrCode(me.no);
+  } catch (e) {
+    $('qr-msg').textContent = '二维码生成失败：' + e.message;
+    $('qr-msg').className = 'msg err';
+  }
 }
 
 $('btn-edit').addEventListener('click', () => {
@@ -163,7 +190,11 @@ $('btn-edit-save').addEventListener('click', async () => {
   } catch (e) { alert('保存失败：' + e.message); }
 });
 $('btn-download').addEventListener('click', () => {
-  if (!window._qr) return;
+  if (!window._qr) {
+    $('qr-msg').textContent = '当前没有可下载的二维码，请稍后重试。';
+    $('qr-msg').className = 'msg err';
+    return;
+  }
   const a = document.createElement('a');
   a.href = URL.createObjectURL(window._qr); a.download = '我的病人二维码.png'; a.click();
 });
