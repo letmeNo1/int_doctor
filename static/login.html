@@ -20,7 +20,7 @@
     <div class="msg" id="msg"></div>
     <div class="tip" id="tip">管理员请用 admin 账号在此登录</div>
     <div class="tip hidden" id="reg-link" style="margin-top:6px">还没有账号？<a href="patient">立即注册 →</a></div>
-    <div class="entry-card">
+    <div class="entry-card hidden" id="patient-entry">
       <div>
         <b>病人自助注册</b>
         <p>病人可自行创建账号，自动生成病历号和专属二维码。</p>
@@ -41,6 +41,7 @@ document.querySelectorAll('.role-tab').forEach((t) => {
       ? '病人登录后可查看/修改本人信息，并生成专属二维码'
       : '管理员请用 admin 账号在此登录';
     $('reg-link').classList.toggle('hidden', role !== 'patient');
+    $('patient-entry').classList.toggle('hidden', role !== 'patient');
   });
 });
 $('btn-login').addEventListener('click', async () => {
