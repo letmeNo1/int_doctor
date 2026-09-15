@@ -25,7 +25,7 @@
       </div>
       <div class="row">
         <label>联系电话<input id="r-phone" placeholder="选填"></label>
-        <label>预约时间<input id="r-appt" placeholder="如 2026-09-12 09:30"></label>
+        <label>预约时间<input id="r-appt" type="datetime-local"></label>
       </div>
       <div class="row">
         <label>既往史 / 过敏史<textarea id="r-past" rows="3" placeholder="选填"></textarea></label>
@@ -66,7 +66,7 @@
     <div class="field"><label>性别</label><select id="e-gender"><option>男</option><option>女</option><option>其他</option></select></div>
     <div class="field"><label>年龄</label><input id="e-age"></div>
     <div class="field"><label>联系电话</label><input id="e-phone"></div>
-    <div class="field"><label>预约时间</label><input id="e-appt"></div>
+    <div class="field"><label>预约时间</label><input id="e-appt" type="datetime-local"></div>
     <div class="field"><label>既往史/过敏史</label><textarea id="e-past" rows="3"></textarea></div>
     <div class="field"><label>新密码（留空不修改）</label><input id="e-pass" type="password"></div>
     <div class="ops">
@@ -80,6 +80,16 @@
 const $ = (id) => document.getElementById(id);
 const APP_ROOT = new URL('.', window.location.href);
 const token = localStorage.getItem('token');
+
+function toDateTimeLocal(value) {
+  if (!value) return '';
+  const normalized = String(value).trim().replace(' ', 'T');
+  return /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(normalized) ? normalized : '';
+}
+
+function fromDateTimeLocal(value) {
+  return value ? value.replace('T', ' ') : '';
+}
 
 function logout() { localStorage.clear(); location.href = new URL('./', APP_ROOT); }
 $('btn-logout').addEventListener('click', logout);
@@ -98,7 +108,7 @@ $('form-reg').addEventListener('submit', async (e) => {
   try {
     const j = await api('api/patient/register', { method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: $('r-name').value.trim(), gender: $('r-gender').value, age: $('r-age').value.trim(),
-        phone: $('r-phone').value.trim(), appt: $('r-appt').value.trim(), past: $('r-past').value.trim(),
+        phone: $('r-phone').value.trim(), appt: fromDateTimeLocal($('r-appt').value), past: $('r-past').value.trim(),
         username: $('r-user').value.trim(), password: $('r-pass').value }) });
     // 注册后自动登录
     const l = await api('api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -137,7 +147,7 @@ async function init() {
 
 $('btn-edit').addEventListener('click', () => {
   $('e-name').value = me.name; $('e-gender').value = me.gender; $('e-age').value = me.age || '';
-  $('e-phone').value = me.phone || ''; $('e-appt').value = me.appt || ''; $('e-past').value = me.past || '';
+  $('e-phone').value = me.phone || ''; $('e-appt').value = toDateTimeLocal(me.appt); $('e-past').value = me.past || '';
   $('e-pass').value = '';
   $('edit-mask').classList.remove('hidden');
 });
@@ -145,7 +155,7 @@ $('btn-edit-cancel').addEventListener('click', () => $('edit-mask').classList.ad
 $('btn-edit-save').addEventListener('click', async () => {
   try {
     const body = { name: $('e-name').value.trim(), gender: $('e-gender').value, age: $('e-age').value.trim(),
-      phone: $('e-phone').value.trim(), past: $('e-past').value.trim() };
+      phone: $('e-phone').value.trim(), appt: fromDateTimeLocal($('e-appt').value), past: $('e-past').value.trim() };
     if ($('e-pass').value) body.password = $('e-pass').value;
     await api('api/patient/me', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     $('edit-mask').classList.add('hidden');
