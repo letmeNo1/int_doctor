@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <title>病人中心</title>
-<link rel="stylesheet" href="/static/style.css">
+<link rel="stylesheet" href="static/style.css">
 </head>
 <body>
 <div class="topbar">
@@ -34,7 +34,7 @@
       </div>
       <button class="btn" type="submit">注册并生成二维码</button>
     </form>
-    <div class="tip" style="text-align:center;margin-top:14px;font-size:13px;color:#6b7280">已有账号？<a href="/">去登录</a></div>
+    <div class="tip" style="text-align:center;margin-top:14px;font-size:13px;color:#6b7280">已有账号？<a href="./">去登录</a></div>
   </div>
 </div>
 
@@ -76,14 +76,15 @@
 
 <script>
 const $ = (id) => document.getElementById(id);
+const APP_ROOT = new URL('.', window.location.href);
 const token = localStorage.getItem('token');
 
-function logout() { localStorage.clear(); location.href = '/'; }
+function logout() { localStorage.clear(); location.href = new URL('./', APP_ROOT); }
 $('btn-logout').addEventListener('click', logout);
 
 async function api(url, opt = {}) {
   const headers = { ...(token ? { 'Authorization': 'Bearer ' + token } : {}), ...(opt.headers || {}) };
-  const r = await fetch(url, { ...opt, headers });
+  const r = await fetch(new URL(url, APP_ROOT), { ...opt, headers });
   const j = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(j.detail || '请求失败');
   return j;
@@ -127,7 +128,7 @@ async function init() {
       ['电话', me.phone], ['预约时间', me.appt || '未设置'], ['既往史/过敏史', me.past || '无'],
     ].map(([k, v]) => `<div class="item"><b>${k}</b><span>${esc(v)}</span></div>`).join('');
     $('qr-no').textContent = '病历号：' + me.no;
-    const r = await fetch('/api/qrcode/' + me.no, { headers: { 'Authorization': 'Bearer ' + token } });
+    const r = await fetch(new URL('api/qrcode/' + me.no, APP_ROOT), { headers: { 'Authorization': 'Bearer ' + token } });
     if (r.ok) { const blob = await r.blob(); $('qr-img').src = URL.createObjectURL(blob); window._qr = blob; }
   } catch (e) { alert('加载失败：' + e.message); logout(); }
 }

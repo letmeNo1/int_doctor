@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <title>医生工作台</title>
-<link rel="stylesheet" href="/static/style.css">
+<link rel="stylesheet" href="static/style.css">
 </head>
 <body>
 <div class="topbar">
@@ -66,15 +66,16 @@
 
 <script>
 const $ = (id) => document.getElementById(id);
+const APP_ROOT = new URL('.', window.location.href);
 const token = localStorage.getItem('token');
-if (!token || localStorage.getItem('role') !== 'doctor') location.href = '/';
+if (!token || localStorage.getItem('role') !== 'doctor') location.href = new URL('./', APP_ROOT);
 const user = JSON.parse(localStorage.getItem('user') || '{}');
 $('user-name').textContent = '👤 ' + (user.name || '医生') + (user.department ? ' · ' + user.department : '');
-$('btn-logout').addEventListener('click', () => { localStorage.clear(); location.href = '/'; });
+$('btn-logout').addEventListener('click', () => { localStorage.clear(); location.href = new URL('./', APP_ROOT); });
 
 const auth = { 'Authorization': 'Bearer ' + token };
 async function api(url, opt = {}) {
-  const r = await fetch(url, { ...opt, headers: { ...auth, ...(opt.headers || {}) } });
+  const r = await fetch(new URL(url, APP_ROOT), { ...opt, headers: { ...auth, ...(opt.headers || {}) } });
   const j = await r.json().catch(() => ({}));
   if (!r.ok) { alert(j.detail || '请求失败'); throw new Error(j.detail); }
   return j;
@@ -133,7 +134,7 @@ async function showQr(no) {
   $('qr-no').textContent = '病历号：' + no;
   $('qr-mask').classList.remove('hidden');
   try {
-    const r = await fetch('/api/qrcode/' + no, { headers: auth });
+    const r = await fetch(new URL('api/qrcode/' + no, APP_ROOT), { headers: auth });
     if (!r.ok) throw new Error((await r.json()).detail);
     qrBlobUrl = URL.createObjectURL(await r.blob());
     $('qr-img').src = qrBlobUrl;
