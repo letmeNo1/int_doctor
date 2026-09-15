@@ -4,20 +4,26 @@ body { font-family: "Microsoft YaHei", "PingFang SC", sans-serif; background: #f
 a { color: #2563eb; text-decoration: none; }
 .hidden { display: none !important; }
 
+:root {
+	--page-pad: 16px;
+	--card-pad: 20px;
+	--radius: 12px;
+}
+
 /* 顶栏 */
-.topbar { background: #0f766e; color: #fff; padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; }
+.topbar { background: #0f766e; color: #fff; padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .topbar h1 { font-size: 17px; font-weight: 600; }
-.topbar .user { font-size: 13px; display: flex; align-items: center; gap: 12px; }
+.topbar .user { font-size: 13px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .topbar .btn-outline { background: transparent; border: 1px solid rgba(255,255,255,.7); color: #fff; padding: 5px 14px; border-radius: 8px; cursor: pointer; font-size: 13px; }
 .topbar .btn-outline:hover { background: rgba(255,255,255,.15); }
 
 /* 布局 */
-.wrap { max-width: 1200px; margin: 20px auto; padding: 0 16px; }
-.card { background: #fff; border-radius: 12px; padding: 18px 20px; box-shadow: 0 1px 3px rgba(0,0,0,.06); margin-bottom: 16px; }
+.wrap { max-width: 1200px; margin: 20px auto; padding: 0 var(--page-pad); }
+.card { background: #fff; border-radius: var(--radius); padding: 18px var(--card-pad); box-shadow: 0 1px 3px rgba(0,0,0,.06); margin-bottom: 16px; }
 .card h2 { font-size: 15px; margin-bottom: 12px; color: #0f766e; }
 
 /* Tab */
-.tabs { display: flex; gap: 6px; margin-bottom: 16px; }
+.tabs { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; }
 .tab { padding: 8px 18px; border-radius: 9px; border: 1px solid #d1d5db; background: #fff; cursor: pointer; font-size: 14px; color: #6b7280; }
 .tab.active { background: #0f766e; color: #fff; border-color: #0f766e; font-weight: 600; }
 
@@ -27,7 +33,7 @@ form label { display: flex; flex-direction: column; gap: 5px; font-size: 12px; c
 input, select, textarea { border: 1px solid #d1d5db; border-radius: 8px; padding: 8px 10px; font-size: 13px; font-family: inherit; width: 100%; }
 input:focus, select:focus, textarea:focus { outline: 2px solid #99f6e4; border-color: #14b8a6; }
 textarea { resize: vertical; }
-.btn { background: #0f766e; color: #fff; border: none; border-radius: 8px; padding: 8px 18px; cursor: pointer; font-size: 13px; }
+.btn { background: #0f766e; color: #fff; border: none; border-radius: 8px; padding: 8px 18px; cursor: pointer; font-size: 13px; min-height: 38px; }
 .btn:hover { background: #115e59; }
 .btn-ghost { background: #fff; color: #0f766e; border: 1px solid #14b8a6; }
 .btn-ghost:hover { background: #f0fdfa; }
@@ -47,7 +53,7 @@ tr:hover td { background: #f8fafc; }
 
 /* 登录页 */
 .login-body { background: linear-gradient(135deg, #0f766e, #134e4a); min-height: 100vh; display: flex; align-items: center; justify-content: center; }
-.login-card { background: #fff; border-radius: 16px; padding: 32px 34px; width: 400px; box-shadow: 0 20px 50px rgba(0,0,0,.25); }
+.login-card { background: #fff; border-radius: 16px; padding: 32px 34px; width: min(400px, calc(100vw - 32px)); box-shadow: 0 20px 50px rgba(0,0,0,.25); }
 .login-card h1 { font-size: 20px; text-align: center; margin-bottom: 4px; }
 .login-card .sub { text-align: center; color: #6b7280; font-size: 13px; margin-bottom: 20px; }
 .login-card .role-tabs { display: flex; gap: 6px; margin-bottom: 18px; }
@@ -57,9 +63,14 @@ tr:hover td { background: #f8fafc; }
 .login-card .field label { display: block; font-size: 12px; color: #6b7280; margin-bottom: 5px; }
 .login-card .btn { width: 100%; padding: 10px; margin-top: 4px; }
 .login-card .tip { text-align: center; font-size: 12px; color: #6b7280; margin-top: 12px; }
+.entry-card { margin-top: 18px; padding: 14px; border-radius: 12px; background: #f0fdfa; border: 1px solid #99f6e4; display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+.entry-card b { display: block; color: #0f766e; margin-bottom: 4px; font-size: 14px; }
+.entry-card p { color: #4b5563; font-size: 12px; line-height: 1.6; }
+.entry-btn { width: auto !important; flex: 0 0 auto; white-space: nowrap; }
 .msg { text-align: center; font-size: 13px; margin-top: 10px; min-height: 18px; }
 .msg.err { color: #dc2626; }
 .msg.ok { color: #047857; }
+.page-note { margin-bottom: 14px; color: #4b5563; font-size: 13px; line-height: 1.6; background: #f8fafc; border-left: 4px solid #14b8a6; padding: 10px 12px; border-radius: 8px; }
 
 /* 病人详情 / 二维码 */
 .detail-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 12px; }
@@ -67,7 +78,7 @@ tr:hover td { background: #f8fafc; }
 .detail-grid .item b { display: block; font-size: 12px; color: #6b7280; font-weight: 500; margin-bottom: 3px; }
 .detail-grid .item span { font-size: 14px; }
 .qr-wrap { text-align: center; padding: 16px; }
-.qr-wrap img { width: 220px; height: 220px; border-radius: 10px; border: 1px solid #e5e7eb; }
+.qr-wrap img { width: min(220px, 100%); height: auto; aspect-ratio: 1 / 1; border-radius: 10px; border: 1px solid #e5e7eb; }
 .qr-wrap .no { font-size: 15px; font-weight: 700; color: #0f766e; margin: 10px 0 14px; }
 
 /* 弹窗 */
@@ -81,3 +92,141 @@ tr:hover td { background: #f8fafc; }
 .record-item .head { display: flex; justify-content: space-between; font-size: 12px; color: #6b7280; margin-bottom: 6px; }
 .record-item .doc { font-size: 13px; white-space: pre-wrap; line-height: 1.7; }
 .mono { font-family: Consolas, monospace; font-size: 13px; }
+
+@media (max-width: 768px) {
+	:root {
+		--page-pad: 12px;
+		--card-pad: 14px;
+		--radius: 10px;
+	}
+
+	body {
+		font-size: 15px;
+	}
+
+	.topbar {
+		padding: 12px 14px;
+		align-items: flex-start;
+		flex-direction: column;
+	}
+
+	.topbar h1 {
+		font-size: 18px;
+	}
+
+	.topbar .user {
+		width: 100%;
+		justify-content: space-between;
+	}
+
+	.topbar .btn-outline,
+	.btn {
+		min-height: 42px;
+	}
+
+	.wrap {
+		margin: 12px auto 20px;
+	}
+
+	.card {
+		margin-bottom: 12px;
+	}
+
+	.tabs {
+		display: grid;
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+	}
+
+	.tab {
+		padding: 10px 8px;
+		text-align: center;
+	}
+
+	form .row,
+	.modal .ops {
+		flex-direction: column;
+	}
+
+	form label {
+		min-width: 100%;
+	}
+
+	.search {
+		max-width: none;
+		width: 100%;
+	}
+
+	table {
+		display: block;
+		overflow-x: auto;
+		white-space: nowrap;
+		-webkit-overflow-scrolling: touch;
+	}
+
+	tbody, thead, tr {
+		white-space: nowrap;
+	}
+
+	.detail-grid {
+		grid-template-columns: 1fr;
+	}
+
+	.modal {
+		width: min(96vw, 560px);
+		padding: 16px;
+		max-height: 90vh;
+	}
+
+	.record-item {
+		padding: 12px;
+	}
+
+	.record-item .head {
+		gap: 6px;
+		flex-direction: column;
+		align-items: flex-start;
+	}
+
+	.qr-wrap {
+		padding: 8px 0;
+	}
+
+	.login-body {
+		align-items: stretch;
+		padding: 16px;
+	}
+
+	.login-card {
+		margin: auto 0;
+		padding: 24px 18px;
+	}
+
+	.entry-card {
+		align-items: stretch;
+		flex-direction: column;
+	}
+
+	.entry-btn {
+		width: 100% !important;
+	}
+}
+
+@media (max-width: 480px) {
+	.tabs {
+		grid-template-columns: 1fr;
+	}
+
+	th, td {
+		padding: 8px;
+		font-size: 12px;
+	}
+
+	.btn-small {
+		padding: 6px 10px;
+	}
+
+	.login-card h1,
+	.card h2 {
+		line-height: 1.35;
+	}
+}

@@ -2,12 +2,13 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>病人中心</title>
 <link rel="stylesheet" href="static/style.css">
 </head>
 <body>
 <div class="topbar">
-  <h1>🧑‍⚕️ 病人中心</h1>
+  <h1>🧑‍⚕️ 病人自助注册</h1>
   <div class="user"><span id="user-name"></span><button class="btn-outline" id="btn-logout">退出登录</button></div>
 </div>
 
@@ -15,6 +16,7 @@
 <div class="wrap" id="view-reg">
   <div class="card" style="max-width:640px;margin:40px auto">
     <h2>病人注册</h2>
+    <div class="page-note">填写基础信息后即可生成病历号，并在登录后查看或修改个人档案与二维码。</div>
     <form id="form-reg">
       <div class="row">
         <label>姓名 *<input id="r-name" required></label>
