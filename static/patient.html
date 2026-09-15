@@ -94,12 +94,12 @@ async function api(url, opt = {}) {
 $('form-reg').addEventListener('submit', async (e) => {
   e.preventDefault();
   try {
-    const j = await api('/api/patient/register', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+    const j = await api('api/patient/register', { method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: $('r-name').value.trim(), gender: $('r-gender').value, age: $('r-age').value.trim(),
         phone: $('r-phone').value.trim(), appt: $('r-appt').value.trim(), past: $('r-past').value.trim(),
         username: $('r-user').value.trim(), password: $('r-pass').value }) });
     // 注册后自动登录
-    const l = await api('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+    const l = await api('api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ role: 'patient', username: $('r-user').value.trim(), password: $('r-pass').value }) });
     localStorage.setItem('token', l.token);
     localStorage.setItem('role', 'patient');
@@ -120,7 +120,7 @@ async function init() {
   $('view-reg').classList.add('hidden');
   $('view-logged').classList.remove('hidden');
   try {
-    const j = await api('/api/patient/me');
+    const j = await api('api/patient/me');
     me = j.patient;
     $('user-name').textContent = '👤 ' + me.name;
     $('info').innerHTML = [
@@ -145,7 +145,7 @@ $('btn-edit-save').addEventListener('click', async () => {
     const body = { name: $('e-name').value.trim(), gender: $('e-gender').value, age: $('e-age').value.trim(),
       phone: $('e-phone').value.trim(), past: $('e-past').value.trim() };
     if ($('e-pass').value) body.password = $('e-pass').value;
-    await api('/api/patient/me', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    await api('api/patient/me', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     $('edit-mask').classList.add('hidden');
     init();
   } catch (e) { alert('保存失败：' + e.message); }

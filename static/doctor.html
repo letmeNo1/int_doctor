@@ -84,7 +84,7 @@ const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':
 
 let patients = [];
 async function loadPatients() {
-  const j = await api('/api/doctor/patients?q=' + encodeURIComponent($('patient-q').value.trim()));
+  const j = await api('api/doctor/patients?q=' + encodeURIComponent($('patient-q').value.trim()));
   patients = j.patients;
   $('patient-list').innerHTML = patients.length
     ? patients.map((p) => `<tr><td class="mono">${esc(p.no)}</td><td><b>${esc(p.name)}</b></td><td>${esc(p.gender)}</td><td>${esc(p.age)}</td><td>${esc(p.phone)}</td><td>${esc(p.appt)}</td>
@@ -96,7 +96,7 @@ $('patient-q').addEventListener('input', () => setTimeout(loadPatients, 300));
 
 let currentPatient = null;
 async function openDetail(id) {
-  const j = await api('/api/doctor/patients/' + id);
+  const j = await api('api/doctor/patients/' + id);
   currentPatient = j.patient;
   $('detail-title').textContent = '病人详情：' + currentPatient.name;
   $('detail-info').innerHTML = [
@@ -120,7 +120,7 @@ $('btn-back').addEventListener('click', () => {
 });
 $('form-record').addEventListener('submit', async (e) => {
   e.preventDefault();
-  await api('/api/doctor/records', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+  await api('api/doctor/records', { method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ patientNo: currentPatient.no, complaint: $('r-complaint').value.trim(),
       dx: $('r-dx').value.trim(), content: $('r-content').value.trim() }) });
   ['r-complaint','r-dx','r-content'].forEach((i) => $(i).value = '');
