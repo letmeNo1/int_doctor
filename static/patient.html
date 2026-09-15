@@ -8,35 +8,19 @@
 </head>
 <body>
 <div class="topbar">
-  <h1>🧑‍⚕️ 病人自助注册</h1>
-  <div class="user"><span id="user-name"></span><button class="btn-outline" id="btn-logout">退出登录</button></div>
+  <h1 id="page-title">🧑‍⚕️ 病人中心</h1>
+  <div class="user"><span id="user-name"></span><button class="btn-outline hidden" id="btn-logout">退出登录</button></div>
 </div>
 
-<!-- 注册视图 -->
-<div class="wrap" id="view-reg">
+<!-- 未登录视图 -->
+<div class="wrap" id="view-guest">
   <div class="card" style="max-width:640px;margin:40px auto">
-    <h2>病人注册</h2>
-    <div class="page-note">填写基础信息后即可生成病历号，并在登录后查看或修改个人档案与二维码。</div>
-    <form id="form-reg">
-      <div class="row">
-        <label>姓名 *<input id="r-name" required></label>
-        <label>性别<select id="r-gender"><option>男</option><option>女</option><option>其他</option></select></label>
-        <label>年龄<input id="r-age" placeholder="如 45"></label>
-      </div>
-      <div class="row">
-        <label>联系电话<input id="r-phone" placeholder="选填"></label>
-        <label>预约时间<input id="r-appt" type="datetime-local"></label>
-      </div>
-      <div class="row">
-        <label>既往史 / 过敏史<textarea id="r-past" rows="3" placeholder="选填"></textarea></label>
-      </div>
-      <div class="row">
-        <label>登录账号 *<input id="r-user" required placeholder="用于后续登录"></label>
-        <label>密码 *<input id="r-pass" type="password" required></label>
-      </div>
-      <button class="btn" type="submit">注册并生成二维码</button>
-    </form>
-    <div class="tip" style="text-align:center;margin-top:14px;font-size:13px;color:#6b7280">已有账号？<a href="./">去登录</a></div>
+    <h2>请先登录</h2>
+    <div class="page-note">病人中心仅用于查看个人档案、二维码和修改资料。未注册用户请先完成自助注册。</div>
+    <div class="ops ops-inline">
+      <a class="btn" href="./">去登录</a>
+      <a class="btn btn-ghost" href="patient-register">去注册</a>
+    </div>
   </div>
 </div>
 
@@ -124,39 +108,27 @@ async function loadQrCode(patientNo) {
   window._qr = blob;
 }
 
-// 注册
-$('form-reg').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  try {
-    const j = await api('api/patient/register', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: $('r-name').value.trim(), gender: $('r-gender').value, age: $('r-age').value.trim(),
-        phone: $('r-phone').value.trim(), appt: fromDateTimeLocal($('r-appt').value), past: $('r-past').value.trim(),
-        username: $('r-user').value.trim(), password: $('r-pass').value }) });
-    // 注册后自动登录
-    const l = await api('api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ role: 'patient', username: $('r-user').value.trim(), password: $('r-pass').value }) });
-    localStorage.setItem('token', l.token);
-    localStorage.setItem('role', 'patient');
-    localStorage.setItem('user', JSON.stringify(l.user));
-    location.reload();
-  } catch (err) { alert(err.message); }
-});
-
 // 已登录视图
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let me = null;
 
 async function init() {
   if (!token || localStorage.getItem('role') !== 'patient') {
+    $('page-title').textContent = '🧑‍⚕️ 病人中心';
+    $('user-name').textContent = '';
+    $('btn-logout').classList.add('hidden');
+    $('view-guest').classList.remove('hidden');
     $('view-logged').classList.add('hidden');
-    return; // 注册视图可见
+    return;
   }
-  $('view-reg').classList.add('hidden');
+  $('page-title').textContent = '🧑‍⚕️ 病人中心';
+  $('view-guest').classList.add('hidden');
   $('view-logged').classList.remove('hidden');
   try {
     const j = await api('api/patient/me');
     me = j.patient;
     $('user-name').textContent = '👤 ' + me.name;
+    $('btn-logout').classList.remove('hidden');
     $('info').innerHTML = [
       ['病历号', me.no], ['姓名', me.name], ['性别', me.gender], ['年龄', me.age],
       ['电话', me.phone], ['预约时间', me.appt || '未设置'], ['既往史/过敏史', me.past || '无'],

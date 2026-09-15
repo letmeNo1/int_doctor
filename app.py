@@ -535,6 +535,10 @@ def page_doctor():
 def page_patient():
     return page("patient.html")
 
+@app.get("/patient-register")
+def page_patient_register():
+    return page("patient-register.html")
+
 # 初始化：SQLite 建表 + 迁移旧数据 + 确保管理员存在
 def ensure_admin():
     if not any(u.get("role") == "admin" for u in users()):

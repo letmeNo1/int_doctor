@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>病人自助注册</title>
+<link rel="stylesheet" href="static/style.css">
+</head>
+<body>
+<div class="topbar">
+  <h1>🧑‍⚕️ 病人自助注册</h1>
+  <div class="user"><a class="btn-outline" href="./">返回登录</a></div>
+</div>
+
+<div class="wrap">
+  <div class="card" style="max-width:640px;margin:40px auto">
+    <h2>病人注册</h2>
+    <div class="page-note">填写基础信息后即可生成病历号，并在注册成功后自动进入病人中心查看专属二维码。</div>
+    <form id="form-reg">
+      <div class="row">
+        <label>姓名 *<input id="r-name" required></label>
+        <label>性别<select id="r-gender"><option>男</option><option>女</option><option>其他</option></select></label>
+        <label>年龄<input id="r-age" placeholder="如 45"></label>
+      </div>
+      <div class="row">
+        <label>联系电话<input id="r-phone" placeholder="选填"></label>
+        <label>预约时间<input id="r-appt" type="datetime-local"></label>
+      </div>
+      <div class="row">
+        <label>既往史 / 过敏史<textarea id="r-past" rows="3" placeholder="选填"></textarea></label>
+      </div>
+      <div class="row">
+        <label>登录账号 *<input id="r-user" required placeholder="用于后续登录"></label>
+        <label>密码 *<input id="r-pass" type="password" required></label>
+      </div>
+      <button class="btn" type="submit">注册并生成二维码</button>
+    </form>
+    <div class="msg" id="msg"></div>
+    <div class="tip" style="text-align:center;margin-top:14px;font-size:13px;color:#6b7280">已有账号？<a href="./">去登录</a></div>
+  </div>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const APP_ROOT = new URL('.', window.location.href);
+
+function toPayloadTime(value) {
+  return value ? value.replace('T', ' ') : '';
+}
+
+async function api(url, opt = {}) {
+  const r = await fetch(new URL(url, APP_ROOT), opt);
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.detail || '请求失败');
+  return j;
+}
+
+$('form-reg').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  $('msg').textContent = '';
+  try {
+    const username = $('r-user').value.trim();
+    const password = $('r-pass').value;
+    await api('api/patient/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: $('r-name').value.trim(),
+        gender: $('r-gender').value,
+        age: $('r-age').value.trim(),
+        phone: $('r-phone').value.trim(),
+        appt: toPayloadTime($('r-appt').value),
+        past: $('r-past').value.trim(),
+        username,
+        password
+      })
+    });
+    const login = await api('api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ role: 'patient', username, password })
+    });
+    localStorage.setItem('token', login.token);
+    localStorage.setItem('role', 'patient');
+    localStorage.setItem('user', JSON.stringify(login.user));
+    location.href = new URL('patient', APP_ROOT);
+  } catch (err) {
+    $('msg').textContent = err.message;
+    $('msg').className = 'msg err';
+  }
+});
+</script>
+</body>
+</html>
