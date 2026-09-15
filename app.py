@@ -307,6 +307,7 @@ def login(req: LoginReq):
         raise HTTPException(401, "账号或密码错误")
     token = new_token(u.get("role", req.role), str(u["id"]))
     info = {k: v for k, v in u.items() if k not in ("password_hash", "salt")}
+    info["role"] = u.get("role", req.role)
     return {"token": token, "user": info}
 
 # ---------------- 管理后台 ----------------
@@ -460,7 +461,7 @@ def patient_register(req: PatientRegister):
     if any(p.get("username") == req.username for p in patients()):
         raise HTTPException(400, "账号已存在")
     salt, h = hash_pwd(req.password)
-    p = {"id": secrets.token_hex(6), "no": gen_patient_no(), "name": req.name,
+    p = {"id": secrets.token_hex(6), "role": "patient", "no": gen_patient_no(), "name": req.name,
          "gender": req.gender, "age": req.age, "phone": req.phone, "past": req.past,
          "appt": req.appt, "username": req.username, "password_hash": h, "salt": salt,
          "createdAt": datetime.datetime.now().isoformat()}
@@ -547,10 +548,21 @@ def ensure_admin():
                      "password_hash": h, "salt": salt, "name": "系统管理员",
                      "createdAt": datetime.datetime.now().isoformat()}])
 
+def ensure_patient_roles():
+    data = patients()
+    changed = False
+    for patient in data:
+        if patient.get("role") != "patient":
+            patient["role"] = "patient"
+            changed = True
+    if changed:
+        save_patients(data)
+
 init_db()
 migrate_doc_json("users", USERS_FILE)
 migrate_doc_json("patients", PATIENTS_FILE)
 migrate_records_json()
+ensure_patient_roles()
 ensure_admin()
 
 if __name__ == "__main__":

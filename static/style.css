@@ -14,7 +14,7 @@ a { color: #2563eb; text-decoration: none; }
 .topbar { background: #0f766e; color: #fff; padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .topbar h1 { font-size: 17px; font-weight: 600; }
 .topbar .user { font-size: 13px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-.topbar .btn-outline { background: transparent; border: 1px solid rgba(255,255,255,.7); color: #fff; padding: 5px 14px; border-radius: 8px; cursor: pointer; font-size: 13px; }
+.topbar .btn-outline { background: transparent; border: 1px solid rgba(255,255,255,.7); color: #fff; padding: 5px 14px; border-radius: 8px; cursor: pointer; font-size: 13px; display: inline-flex; align-items: center; justify-content: center; text-align: center; white-space: normal; }
 .topbar .btn-outline:hover { background: rgba(255,255,255,.15); }
 
 /* 布局 */
@@ -33,7 +33,7 @@ form label { display: flex; flex-direction: column; gap: 5px; font-size: 12px; c
 input, select, textarea { border: 1px solid #d1d5db; border-radius: 8px; padding: 8px 10px; font-size: 13px; font-family: inherit; width: 100%; }
 input:focus, select:focus, textarea:focus { outline: 2px solid #99f6e4; border-color: #14b8a6; }
 textarea { resize: vertical; }
-.btn { background: #0f766e; color: #fff; border: none; border-radius: 8px; padding: 8px 18px; cursor: pointer; font-size: 13px; min-height: 38px; }
+.btn { background: #0f766e; color: #fff; border: none; border-radius: 8px; padding: 8px 18px; cursor: pointer; font-size: 13px; min-height: 38px; display: inline-flex; align-items: center; justify-content: center; text-align: center; line-height: 1.4; white-space: normal; }
 .btn:hover { background: #115e59; }
 .btn-ghost { background: #fff; color: #0f766e; border: 1px solid #14b8a6; }
 .btn-ghost:hover { background: #f0fdfa; }
@@ -87,8 +87,14 @@ tr:hover td { background: #f8fafc; }
 .modal h3 { font-size: 15px; margin-bottom: 14px; }
 .modal .field { margin-bottom: 12px; }
 .modal .field label { display: block; font-size: 12px; color: #6b7280; margin-bottom: 5px; }
-.modal .ops, .ops { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
+.modal .ops, .ops { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; flex-wrap: wrap; }
 .ops-inline { justify-content: center; }
+.ops > .btn,
+.ops > .btn-ghost,
+.ops > .btn-danger,
+.ops > a.btn,
+.ops > a.btn-ghost,
+.ops > a.btn-danger { flex: 1 1 180px; max-width: 100%; }
 .record-item { border: 1px solid #eef1f4; border-radius: 10px; padding: 12px 14px; margin-bottom: 10px; }
 .record-item .head { display: flex; justify-content: space-between; font-size: 12px; color: #6b7280; margin-bottom: 6px; }
 .record-item .doc { font-size: 13px; white-space: pre-wrap; line-height: 1.7; }
@@ -144,7 +150,8 @@ tr:hover td { background: #f8fafc; }
 	}
 
 	form .row,
-	.modal .ops {
+	.modal .ops,
+	.ops {
 		flex-direction: column;
 	}
 
@@ -209,6 +216,15 @@ tr:hover td { background: #f8fafc; }
 
 	.entry-btn {
 		width: 100% !important;
+	}
+
+	.ops > .btn,
+	.ops > .btn-ghost,
+	.ops > .btn-danger,
+	.ops > a.btn,
+	.ops > a.btn-ghost,
+	.ops > a.btn-danger {
+		flex-basis: 100%;
 	}
 }
 
