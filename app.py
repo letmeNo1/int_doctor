@@ -506,12 +506,18 @@ def qrcode_png(no: str, authorization: Optional[str] = Header(None)):
         raise HTTPException(401, "未登录")
     if auth["role"] == "patient" and str(p["id"]) != auth["id"]:
         raise HTTPException(403, "无权查看他人二维码")
-    import qrcode
-    from io import BytesIO
-    img = qrcode.make(no)
-    buf = BytesIO()
-    img.save(buf, format="PNG")
-    return Response(buf.getvalue(), media_type="image/png")
+    try:
+        import qrcode
+        from io import BytesIO
+
+        img = qrcode.make(no)
+        buf = BytesIO()
+        img.save(buf, format="PNG")
+        return Response(buf.getvalue(), media_type="image/png")
+    except ImportError as exc:
+        raise HTTPException(500, f"二维码依赖未安装：{exc}. 请安装 qrcode 和 pillow") from exc
+    except Exception as exc:
+        raise HTTPException(500, f"二维码生成失败：{exc}") from exc
 
 # ---------------- 页面 ----------------
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
